@@ -38,6 +38,17 @@ test "parse flow scalars" {
 }
 
 ///|
+test "parse flow plain multiline scalars" {
+  let input =
+    #|[a
+    #|  b]
+  assert_eq(
+    parse_yaml(input),
+    Yaml::Seq([Yaml::String("a b")]),
+  )
+}
+
+///|
 test "parse special floats" {
   match parse_yaml(".inf") {
     Float(value) => assert_true(value.is_inf())

@@ -9,7 +9,7 @@ fn parse_flow_node(
     None => {
       let (tag, anchor) = parse_node_props(ctx, scanner)
       scanner.skip_ws_and_comments()
-      let value = if tag is Some(t) && is_str_tag(t) {
+      let value = if tag is Some(_) {
         match scanner.peek() {
           Some('[') => parse_flow_value(ctx, scanner)
           Some('{') => parse_flow_value(ctx, scanner)

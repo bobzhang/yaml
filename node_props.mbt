@@ -151,10 +151,6 @@ fn is_core_tag(tag : String, name : String) -> Bool {
 }
 
 ///|
-fn is_str_tag(tag : String) -> Bool {
-  is_core_tag(tag, "str")
-}
-
 ///|
 fn read_anchor(scanner : Scanner) -> String raise ParseError {
   let sb = StringBuilder::new()
@@ -171,11 +167,32 @@ fn read_anchor(scanner : Scanner) -> String raise ParseError {
 
 ///|
 fn is_anchor_char(c : Char) -> Bool {
-  c.is_ascii_alphabetic() ||
-  c.is_ascii_digit() ||
-  c is '_' ||
-  c is '-' ||
-  c is '.'
+  if c.is_whitespace() {
+    return false
+  }
+  !is_anchor_break(c)
+}
+
+///|
+fn is_anchor_break(c : Char) -> Bool {
+  c is '[' ||
+  c is ']' ||
+  c is '{' ||
+  c is '}' ||
+  c is ',' ||
+  c is '?' ||
+  c is ':' ||
+  c is '#' ||
+  c is '&' ||
+  c is '*' ||
+  c is '!' ||
+  c is '|' ||
+  c is '>' ||
+  c is '\'' ||
+  c is '"' ||
+  c is '%' ||
+  c is '@' ||
+  c is '`'
 }
 
 ///|

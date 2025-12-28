@@ -83,28 +83,57 @@ fn parse_single_quoted(scanner : Scanner) -> String raise ParseError {
 
 ///|
 fn parse_plain_scalar(scanner : Scanner) -> String raise ParseError {
+  let lines : Array[String] = []
   let sb = StringBuilder::new()
   let mut prev_space = true
+  let mut ended_on_newline = false
   while scanner.peek() is Some(c) &&
         !is_flow_plain_break(scanner, c, prev_space) {
+    if c is '\n' || c is '\r' {
+      ignore(scanner.advance())
+      lines.push(sb.to_string().trim_end().to_string())
+      sb.reset()
+      ended_on_newline = true
+      if !skip_flow_plain_line(scanner, lines) {
+        break
+      }
+      ended_on_newline = false
+      prev_space = true
+      continue
+    }
     ignore(scanner.advance())
     sb.write_char(c)
     prev_space = c.is_whitespace()
   }
-  let raw = sb.to_string().trim_end().to_string()
-  if raw is "" {
-    match scanner.peek() {
-      None => raise ParseError::UnexpectedEof(pos=scanner.position())
-      Some(c) =>
-        raise ParseError::UnexpectedChar(pos=scanner.position(), found=c)
+  if lines.length() == 0 {
+    let raw = sb.to_string().trim_end().to_string()
+    if raw is "" {
+      match scanner.peek() {
+        None => raise ParseError::UnexpectedEof(pos=scanner.position())
+        Some(c) =>
+          raise ParseError::UnexpectedChar(pos=scanner.position(), found=c)
+      }
     }
+    raw
+  } else {
+    if !ended_on_newline {
+      lines.push(sb.to_string().trim_end().to_string())
+    }
+    let folded = fold_lines(lines)
+    if folded is "" {
+      match scanner.peek() {
+        None => raise ParseError::UnexpectedEof(pos=scanner.position())
+        Some(c) =>
+          raise ParseError::UnexpectedChar(pos=scanner.position(), found=c)
+      }
+    }
+    folded
   }
-  raw
 }
 
 ///|
 fn is_flow_plain_break(scanner : Scanner, c : Char, prev_space : Bool) -> Bool {
-  if c is '\n' || c is '\r' || c is '\t' {
+  if c is '\t' {
     return true
   }
   if c is ',' || c is ']' || c is '}' || c is '[' || c is '{' {
@@ -122,6 +151,55 @@ fn is_flow_plain_break(scanner : Scanner, c : Char, prev_space : Bool) -> Bool {
   } else {
     false
   }
+}
+
+///|
+fn skip_flow_plain_line(
+  scanner : Scanner,
+  lines : Array[String],
+) -> Bool {
+  while true {
+    while scanner.peek() is Some(c) && (c is ' ' || c is '\t') {
+      ignore(scanner.advance())
+    }
+    match scanner.peek() {
+      None => return false
+      Some('\n') => {
+        ignore(scanner.advance())
+        lines.push("")
+        continue
+      }
+      Some('\r') => {
+        ignore(scanner.advance())
+        lines.push("")
+        continue
+      }
+      Some('#') => {
+        scanner.skip_comment()
+        match scanner.peek() {
+          Some('\n') => {
+            ignore(scanner.advance())
+            lines.push("")
+            continue
+          }
+          Some('\r') => {
+            ignore(scanner.advance())
+            lines.push("")
+            continue
+          }
+          None => return false
+          Some(_) => return false
+        }
+      }
+      Some(c) =>
+        if is_flow_plain_break(scanner, c, true) {
+          return false
+        } else {
+          return true
+        }
+    }
+  }
+  false
 }
 
 ///|

@@ -224,7 +224,7 @@ fn parse_inline_value(ctx : TagContext, text : String) -> Yaml raise ParseError 
         parse_flow_value_from_string(ctx, rest)
       } else if rest.has_prefix("\"") || rest.has_prefix("'") {
         parse_flow_value_from_string(ctx, rest)
-      } else if tag is Some(t) && is_str_tag(t) {
+      } else if tag is Some(_) {
         Yaml::String(rest)
       } else {
         parse_scalar_value(rest)

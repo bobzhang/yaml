@@ -16,6 +16,15 @@ test "parse block maps" {
 }
 
 ///|
+test "parse bom at start" {
+  let input = "\u{feff}a: 1"
+  assert_eq(
+    parse_yaml(input),
+    Yaml::Map([(Yaml::String("a"), Yaml::Int(1))]),
+  )
+}
+
+///|
 test "parse block sequences" {
   let input =
     #|- 1

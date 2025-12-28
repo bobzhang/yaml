@@ -1,6 +1,7 @@
 ///|
 pub fn parse_yaml_stream(input : String) -> Array[Yaml] raise ParseError {
-  split_documents(input).map(doc => parse_document(doc))
+  let normalized = strip_bom(input)
+  split_documents(normalized).map(doc => parse_document(doc))
 }
 
 ///|
@@ -34,6 +35,15 @@ fn parse_document(input : String) -> Yaml raise ParseError {
     }
   } else {
     resolve_aliases(parse_block_document(ctx, content))
+  }
+}
+
+///|
+fn strip_bom(input : String) -> String {
+  if input.has_prefix("\u{feff}") {
+    input.view(start_offset=1).to_string()
+  } else {
+    input
   }
 }
 

@@ -14,6 +14,21 @@ test "parse anchors and aliases" {
 }
 
 ///|
+test "anchors allow punctuation" {
+  let input =
+    #|a: &id+1 1
+    #|b: *id+1
+    #|
+  assert_eq(
+    parse_yaml(input),
+    Yaml::Map([
+      (Yaml::String("a"), Yaml::Anchor(name="id+1", value=Yaml::Int(1))),
+      (Yaml::String("b"), Yaml::Int(1)),
+    ]),
+  )
+}
+
+///|
 test "parse tags" {
   let input =
     #|v1: !tag hello
@@ -30,10 +45,22 @@ test "parse tags" {
         Yaml::String("v2"),
         Yaml::Anchor(
           name="a",
-          value=Yaml::Tagged(tag="!other", value=Yaml::Int(2)),
+          value=Yaml::Tagged(tag="!other", value=Yaml::String("2")),
         ),
       ),
     ]),
+  )
+}
+
+///|
+test "explicit tags keep plain scalars as strings" {
+  assert_eq(
+    parse_yaml("!foo 3"),
+    Yaml::Tagged(tag="!foo", value=Yaml::String("3")),
+  )
+  assert_eq(
+    parse_yaml("! 3"),
+    Yaml::Tagged(tag="!", value=Yaml::String("3")),
   )
 }
 
