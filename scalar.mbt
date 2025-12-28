@@ -9,14 +9,20 @@ fn parse_double_quoted(scanner : Scanner) -> String raise ParseError {
       Some('"') => {
         ignore(scanner.advance())
         lines.push(sb.to_string())
-        return fold_quoted_lines(lines)
+        let folded = fold_quoted_lines(lines)
+        return unescape_double_quoted(folded)
       }
       Some('\\') => {
         ignore(scanner.advance())
         match scanner.peek() {
           Some('\n') => skip_escaped_line_break(scanner)
           Some('\r') => skip_escaped_line_break(scanner)
-          _ => sb.write_char(parse_escape(scanner))
+          Some(c) => {
+            sb.write_char('\\')
+            sb.write_char(c)
+            ignore(scanner.advance())
+          }
+          None => raise ParseError::UnexpectedEof(pos=scanner.position())
         }
       }
       Some('\n') => {
@@ -215,7 +221,12 @@ fn fold_quoted_lines(lines : Array[String]) -> String {
       i = j
       continue
     }
-    let text = trim_end_spaces(line)
+    let text =
+      if i + 1 == end {
+        line
+      } else {
+        trim_end_whitespace(line)
+      }
     sb.write_string(text)
     last_ended_space = ends_with_space(text)
     if i + 1 < end &&
@@ -237,15 +248,39 @@ fn fold_quoted_lines(lines : Array[String]) -> String {
 }
 
 ///|
-fn trim_end_spaces(text : String) -> String {
+fn unescape_double_quoted(text : String) -> String raise ParseError {
+  let scanner = Scanner::new(text)
+  let sb = StringBuilder::new()
+  while scanner.peek() is Some(c) {
+    if c is '\\' {
+      ignore(scanner.advance())
+      match scanner.peek() {
+        Some('\n') => skip_escaped_line_break(scanner)
+        Some('\r') => skip_escaped_line_break(scanner)
+        _ => sb.write_char(parse_escape(scanner))
+      }
+      continue
+    }
+    ignore(scanner.advance())
+    sb.write_char(c)
+  }
+  sb.to_string()
+}
+
+///|
+fn trim_end_whitespace(text : String) -> String {
   let chars = text.to_array()
   let mut end = chars.length()
   while end > 0 {
     let c = chars[end - 1]
-    if !(c is ' ') {
-      break
+    if c is ' ' || c is '\t' {
+      if end > 1 && chars[end - 2] is '\\' {
+        break
+      }
+      end = end - 1
+      continue
     }
-    end = end - 1
+    break
   }
   if end == chars.length() {
     return text
