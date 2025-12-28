@@ -1,13 +1,15 @@
 ///|
 fn parse_double_quoted(scanner : Scanner) -> String raise ParseError {
   scanner.expect('"')
+  let lines : Array[String] = []
   let sb = StringBuilder::new()
   while true {
     match scanner.peek() {
       None => raise ParseError::UnexpectedEof(pos=scanner.position())
       Some('"') => {
         ignore(scanner.advance())
-        return sb.to_string()
+        lines.push(sb.to_string())
+        return fold_lines(lines)
       }
       Some('\\') => {
         ignore(scanner.advance())
@@ -16,6 +18,18 @@ fn parse_double_quoted(scanner : Scanner) -> String raise ParseError {
           Some('\r') => skip_escaped_line_break(scanner)
           _ => sb.write_char(parse_escape(scanner))
         }
+      }
+      Some('\n') => {
+        ignore(scanner.advance())
+        lines.push(sb.to_string())
+        sb.reset()
+        skip_quoted_indent(scanner)
+      }
+      Some('\r') => {
+        ignore(scanner.advance())
+        lines.push(sb.to_string())
+        sb.reset()
+        skip_quoted_indent(scanner)
       }
       Some(c) => {
         ignore(scanner.advance())
@@ -30,6 +44,7 @@ fn parse_double_quoted(scanner : Scanner) -> String raise ParseError {
 ///|
 fn parse_single_quoted(scanner : Scanner) -> String raise ParseError {
   scanner.expect('\'')
+  let lines : Array[String] = []
   let sb = StringBuilder::new()
   while true {
     match scanner.peek() {
@@ -40,8 +55,21 @@ fn parse_single_quoted(scanner : Scanner) -> String raise ParseError {
           ignore(scanner.advance())
           sb.write_char('\'')
         } else {
-          return sb.to_string()
+          lines.push(sb.to_string())
+          return fold_lines(lines)
         }
+      }
+      Some('\n') => {
+        ignore(scanner.advance())
+        lines.push(sb.to_string())
+        sb.reset()
+        skip_quoted_indent(scanner)
+      }
+      Some('\r') => {
+        ignore(scanner.advance())
+        lines.push(sb.to_string())
+        sb.reset()
+        skip_quoted_indent(scanner)
       }
       Some(c) => {
         ignore(scanner.advance())
@@ -147,6 +175,13 @@ fn skip_escaped_line_break(scanner : Scanner) -> Unit {
   } else if scanner.peek() is Some('\n') {
     ignore(scanner.advance())
   }
+  while scanner.peek() is Some(c) && (c is ' ' || c is '\t') {
+    ignore(scanner.advance())
+  }
+}
+
+///|
+fn skip_quoted_indent(scanner : Scanner) -> Unit {
   while scanner.peek() is Some(c) && (c is ' ' || c is '\t') {
     ignore(scanner.advance())
   }

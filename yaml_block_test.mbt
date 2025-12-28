@@ -194,6 +194,18 @@ test "parse multiline plain scalars" {
 }
 
 ///|
+test "parse explicit value indicator" {
+  let input =
+    #|key
+    #|: value
+    #|
+  assert_eq(
+    parse_yaml(input),
+    Yaml::Map([(Yaml::String("key"), Yaml::String("value"))]),
+  )
+}
+
+///|
 test "parse multiline plain scalars in sequences" {
   let input =
     #|- line1

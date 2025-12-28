@@ -17,6 +17,14 @@ test "parse flow scalars" {
     #|"line\
     #|  next"
   assert_eq(parse_yaml(continued), Yaml::String("linenext"))
+  let folded_double =
+    #|"a
+    #|  b"
+  assert_eq(parse_yaml(folded_double), Yaml::String("a b"))
+  let folded_single =
+    #|'a
+    #|  b'
+  assert_eq(parse_yaml(folded_single), Yaml::String("a b"))
   assert_eq(parse_yaml("\"a\\N b\""), Yaml::String("a\u{0085} b"))
   assert_eq(
     parse_yaml("[hello world]"),

@@ -60,7 +60,7 @@ fn parse_block_node(
   }
   if is_seq_line(line, indent) {
     parse_block_seq(ctx, lines, start, indent)
-  } else if is_map_line(line, indent) {
+  } else if is_map_start(lines, start, indent) {
     parse_block_map(ctx, lines, start, indent)
   } else {
     parse_value_from_text(ctx, lines, start, indent, line.content)
@@ -167,14 +167,14 @@ fn parse_block_map(
     if line.indent < indent {
       break
     }
-    if line.indent != indent || !is_map_line(line, indent) {
+    if line.indent != indent {
       break
     }
     if is_explicit_key_line(line, indent) {
       let (entry, next) = parse_explicit_entry(ctx, lines, i, indent)
       items.push(entry)
       i = next
-    } else {
+    } else if split_key_value_opt(line.content) is Some(_) {
       let (key_text, value_text) = split_key_value(line)
       let key = parse_inline_value(ctx, key_text)
       let (value, next) = parse_value_from_text(
@@ -182,6 +182,19 @@ fn parse_block_map(
       )
       items.push((key, value))
       i = next
+    } else if is_value_line_after(lines, i, indent) {
+      let key = parse_inline_value(ctx, line.content)
+      let value_line = next_non_empty(lines, i + 1)
+      let value_text = lines[value_line].content
+        .view(start_offset=1)
+        .to_string()
+      let (value, next) = parse_value_from_text(
+        ctx, lines, value_line, indent, value_text,
+      )
+      items.push((key, value))
+      i = next
+    } else if !is_map_line(line, indent) {
+      break
     }
   }
   (Yaml::Map(items), i)
@@ -448,34 +461,30 @@ fn collect_plain_continuation(
 ) -> (Array[String], Int) {
   let parts : Array[String] = []
   let mut i = index
+  let mut base_indent : Int? = None
   while i < lines.length() {
     let line = lines[i]
     if line.indent <= indent {
       break
     }
     let raw = line.raw.view(start_offset=line.indent).to_string()
-    if is_structured_start(raw) {
+    if raw.trim() is "" {
+      parts.push("")
+      i = i + 1
+      continue
+    }
+    if base_indent is None {
+      base_indent = Some(line.indent)
+    }
+    let base = base_indent.unwrap_or(line.indent)
+    if line.indent < base {
       break
     }
-    parts.push(raw.trim_end().to_string())
+    let text = line.raw.view(start_offset=base).to_string()
+    parts.push(text.trim_end().to_string())
     i = i + 1
   }
   (parts, i)
-}
-
-///|
-fn is_structured_start(raw : String) -> Bool {
-  let trimmed = raw.trim().to_string()
-  if trimmed is "" {
-    return false
-  }
-  if trimmed is "-" || trimmed.has_prefix("- ") {
-    return true
-  }
-  if trimmed is "?" || trimmed.has_prefix("? ") {
-    return true
-  }
-  split_key_value_opt(trimmed) is Some(_)
 }
 
 ///|
@@ -687,6 +696,17 @@ fn is_map_line(line : Line, indent : Int) -> Bool {
 }
 
 ///|
+fn is_map_start(lines : Array[Line], index : Int, indent : Int) -> Bool {
+  let line = lines[index]
+  if line.indent != indent {
+    return false
+  }
+  is_explicit_key_line(line, indent) ||
+  split_key_value_opt(line.content) is Some(_) ||
+  is_value_line_after(lines, index, indent)
+}
+
+///|
 fn is_explicit_key_line(line : Line, indent : Int) -> Bool {
   if line.indent != indent {
     return false
@@ -700,6 +720,19 @@ fn is_value_line(line : Line, indent : Int) -> Bool {
     return false
   }
   line.content is ":" || line.content.has_prefix(": ")
+}
+
+///|
+fn is_value_line_after(
+  lines : Array[Line],
+  index : Int,
+  indent : Int,
+) -> Bool {
+  let next_index = next_non_empty(lines, index + 1)
+  if next_index >= lines.length() {
+    return false
+  }
+  is_value_line(lines[next_index], indent)
 }
 
 ///|
