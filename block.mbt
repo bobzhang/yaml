@@ -829,12 +829,14 @@ fn fold_block_lines(lines : Array[String]) -> String {
   for idx in 0..<lines.length() {
     let line = lines[idx]
     let is_blank = line is ""
-    if idx > 0 {
-      if is_blank || prev_blank {
+    if idx == 0 {
+      if is_blank {
         sb.write_char('\n')
-      } else {
-        sb.write_char(' ')
       }
+    } else if is_blank {
+      sb.write_char('\n')
+    } else if !prev_blank {
+      sb.write_char(' ')
     }
     sb.write_string(line)
     prev_blank = is_blank
