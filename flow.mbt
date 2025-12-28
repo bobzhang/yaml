@@ -21,7 +21,7 @@ fn parse_flow_node(
       } else {
         parse_flow_value(ctx, scanner)
       }
-      apply_node_props(value, tag, anchor)
+      apply_node_props(value, tag, anchor, ctx.coerce_binary)
     }
   }
 }

@@ -269,7 +269,7 @@ fn parse_inline_value(ctx : TagContext, text : String) -> Yaml raise ParseError 
       } else {
         parse_scalar_value(rest)
       }
-      apply_node_props(value, tag, anchor)
+      apply_node_props(value, tag, anchor, ctx.coerce_binary)
     }
   }
 }
@@ -388,15 +388,15 @@ fn try_parse_props_only(
         let child_indent = next_line.indent
         let (value, next) =
           parse_block_node(ctx, lines, next_index, child_indent, true)
-        return Some((apply_node_props(value, tag, anchor), next))
+        return Some((apply_node_props(value, tag, anchor, ctx.coerce_binary), next))
       }
       if allow_same_indent_props && next_line.indent == indent {
         let (value, next) =
           parse_block_node(ctx, lines, next_index, indent, true)
-        return Some((apply_node_props(value, tag, anchor), next))
+        return Some((apply_node_props(value, tag, anchor, ctx.coerce_binary), next))
       }
     }
-    return Some((apply_node_props(Yaml::Null, tag, anchor), line_index + 1))
+    return Some((apply_node_props(Yaml::Null, tag, anchor, ctx.coerce_binary), line_index + 1))
   }
   None
 }
@@ -428,7 +428,7 @@ fn try_parse_quoted_props(
       rest,
     )
     let value = parse_flow_value_from_string(ctx, combined)
-    return Some((apply_node_props(value, tag, anchor), next))
+    return Some((apply_node_props(value, tag, anchor, ctx.coerce_binary), next))
   }
   if rest.has_prefix("'") && !is_terminated_single(rest) {
     let (combined, next) = collect_quoted_multiline(
@@ -438,7 +438,7 @@ fn try_parse_quoted_props(
       rest,
     )
     let value = parse_flow_value_from_string(ctx, combined)
-    return Some((apply_node_props(value, tag, anchor), next))
+    return Some((apply_node_props(value, tag, anchor, ctx.coerce_binary), next))
   }
   None
 }
@@ -772,7 +772,7 @@ fn try_parse_block_scalar(
       let (value, next) = parse_block_scalar(
         lines, index, parent_indent, style, chomp, indent_hint,
       )
-      Some((apply_node_props(Yaml::String(value), tag, anchor), next))
+      Some((apply_node_props(Yaml::String(value), tag, anchor, ctx.coerce_binary), next))
     }
   }
 }

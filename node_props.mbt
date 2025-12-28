@@ -36,10 +36,15 @@ fn apply_node_props(
   value : Yaml,
   tag : String?,
   anchor : String?,
+  coerce_binary : Bool,
 ) -> Yaml raise ParseError {
   let mut node = value
   if tag is Some(t) {
-    node = coerce_tag(t, node)
+    if !coerce_binary && is_core_tag(t, "binary") {
+      node = node
+    } else {
+      node = coerce_tag(t, node)
+    }
     node = Yaml::Tagged(tag=t, value=node)
   }
   if anchor is Some(a) {

@@ -26,7 +26,8 @@ fn run(args : Array[String]) -> Unit raise {
     let json = Json::array(docs.map(yaml_to_tree_json))
     println(json.stringify())
   } else if mode is "json" {
-    let docs = @yaml.parse_yaml_stream(input)
+    let docs =
+      @yaml.parse_yaml_stream_raw(input).map(@yaml.resolve_aliases)
     if docs.length() == 1 {
       let json = yaml_to_json_value(docs[0])
       println(json.stringify())
@@ -50,7 +51,7 @@ fn yaml_to_tree_json(value : @yaml.Yaml) -> Json {
     String(s) => tree_obj("String", [("value", Json::string(s))])
     Binary(bytes) =>
       tree_obj(
-        "Binary",
+        "String",
         [("value", Json::string(@yaml.encode_base64(bytes)))],
       )
     Seq(items) =>

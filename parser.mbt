@@ -24,7 +24,7 @@ pub fn parse_yaml(input : String) -> Yaml raise ParseError {
 
 ///|
 fn parse_document(input : String) -> Yaml raise ParseError {
-  let (ctx, content) = extract_directives(input)
+  let (ctx, content) = extract_directives(input, true)
   let trimmed = content.trim().to_string()
   if trimmed is "" {
     return Yaml::Null
@@ -46,7 +46,7 @@ fn parse_document(input : String) -> Yaml raise ParseError {
 
 ///|
 fn parse_document_raw(input : String) -> Yaml raise ParseError {
-  let (ctx, content) = extract_directives(input)
+  let (ctx, content) = extract_directives(input, false)
   let trimmed = content.trim().to_string()
   if trimmed is "" {
     return Yaml::Null
@@ -76,8 +76,16 @@ fn strip_bom(input : String) -> String {
 }
 
 ///|
-fn extract_directives(input : String) -> (TagContext, String) raise ParseError {
-  let ctx = TagContext::new()
+fn extract_directives(
+  input : String,
+  coerce_binary : Bool,
+) -> (TagContext, String) raise ParseError {
+  let ctx =
+    if coerce_binary {
+      TagContext::new()
+    } else {
+      TagContext::new_raw()
+    }
   let normalized = input
     .replace_all(old="\r\n", new="\n")
     .replace_all(old="\r", new="\n")

@@ -1,6 +1,7 @@
 ///|
 priv struct TagContext {
   handles : Map[String, String]
+  coerce_binary : Bool
 }
 
 ///|
@@ -8,7 +9,15 @@ fn TagContext::new() -> TagContext {
   let handles : Map[String, String] = {}
   handles["!!"] = "tag:yaml.org,2002:"
   handles["!"] = "!"
-  { handles, }
+  { handles, coerce_binary: true }
+}
+
+///|
+fn TagContext::new_raw() -> TagContext {
+  let handles : Map[String, String] = {}
+  handles["!!"] = "tag:yaml.org,2002:"
+  handles["!"] = "!"
+  { handles, coerce_binary: false }
 }
 
 ///|
