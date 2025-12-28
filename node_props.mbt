@@ -1,12 +1,15 @@
 ///|
-fn parse_node_props(scanner : Scanner) -> (String?, String?) raise ParseError {
+fn parse_node_props(
+  ctx : TagContext,
+  scanner : Scanner,
+) -> (String?, String?) raise ParseError {
   let mut tag : String? = None
   let mut anchor : String? = None
   let mut progressed = true
   while progressed {
     progressed = false
     if scanner.eat('!') {
-      tag = Some(read_tag(scanner))
+      tag = Some(read_tag(ctx, scanner))
       progressed = true
     } else if scanner.eat('&') {
       anchor = Some(read_anchor(scanner))
@@ -41,17 +44,37 @@ fn apply_node_props(value : Yaml, tag : String?, anchor : String?) -> Yaml {
 }
 
 ///|
-fn read_tag(scanner : Scanner) -> String {
+fn read_tag(ctx : TagContext, scanner : Scanner) -> String raise ParseError {
+  if scanner.eat('<') {
+    return read_verbatim_tag(scanner)
+  }
   let sb = StringBuilder::new()
   while scanner.peek() is Some(c) && !is_prop_break(c) {
     ignore(scanner.advance())
     sb.write_char(c)
   }
   let body = sb.to_string()
-  if body is "" {
-    "!"
+  let full = if body is "" { "!" } else { "!" + body }
+  ctx.expand(full)
+}
+
+///|
+fn read_verbatim_tag(scanner : Scanner) -> String raise ParseError {
+  let sb = StringBuilder::new()
+  while true {
+    match scanner.peek() {
+      None => raise ParseError::UnexpectedEof(pos=scanner.position())
+      Some('>') => {
+        ignore(scanner.advance())
+        return sb.to_string()
+      }
+      Some(c) => {
+        ignore(scanner.advance())
+        sb.write_char(c)
+      }
+    }
   } else {
-    "!" + body
+    sb.to_string()
   }
 }
 

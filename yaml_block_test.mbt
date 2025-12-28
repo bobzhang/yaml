@@ -128,6 +128,7 @@ test "parse block scalars" {
     #|
     #|
     #|
+    #|
   assert_eq(
     parse_yaml(keep_input),
     Yaml::Map([(Yaml::String("keep"), Yaml::String(keep_value))]),

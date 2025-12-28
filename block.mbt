@@ -14,14 +14,17 @@ priv enum Chomp {
 }
 
 ///|
-fn parse_block_document(input : String) -> Yaml raise ParseError {
+fn parse_block_document(
+  ctx : TagContext,
+  input : String,
+) -> Yaml raise ParseError {
   let lines = collect_lines(input)
   let start = next_non_empty(lines, 0)
   if start >= lines.length() {
     return Yaml::Null
   }
   let first = lines[start]
-  let (value, next) = parse_block_node(lines, start, first.indent)
+  let (value, next) = parse_block_node(ctx, lines, start, first.indent)
   let rest = next_non_empty(lines, next)
   if rest < lines.length() {
     let line = lines[rest]
@@ -35,6 +38,7 @@ fn parse_block_document(input : String) -> Yaml raise ParseError {
 
 ///|
 fn parse_block_node(
+  ctx : TagContext,
   lines : Array[Line],
   index : Int,
   indent : Int,
@@ -55,11 +59,11 @@ fn parse_block_node(
     })
   }
   if is_seq_line(line, indent) {
-    parse_block_seq(lines, start, indent)
+    parse_block_seq(ctx, lines, start, indent)
   } else if is_map_line(line, indent) {
-    parse_block_map(lines, start, indent)
+    parse_block_map(ctx, lines, start, indent)
   } else {
-    (parse_inline_value(line.content), start + 1)
+    (parse_inline_value(ctx, line.content), start + 1)
   }
 }
 
@@ -74,6 +78,7 @@ fn next_non_empty(lines : Array[Line], index : Int) -> Int {
 
 ///|
 fn parse_block_seq(
+  ctx : TagContext,
   lines : Array[Line],
   index : Int,
   indent : Int,
@@ -104,12 +109,14 @@ fn parse_block_seq(
         i = next_index
       } else {
         let child_indent = lines[next_index].indent
-        let (value, next) = parse_block_node(lines, next_index, child_indent)
+        let (value, next) = parse_block_node(
+          ctx, lines, next_index, child_indent,
+        )
         items.push(value)
         i = next
       }
     } else {
-      match try_parse_block_scalar(rest, lines, i + 1, indent) {
+      match try_parse_block_scalar(ctx, rest, lines, i + 1, indent) {
         Some((node, next)) => {
           items.push(node)
           i = next
@@ -126,11 +133,11 @@ fn parse_block_seq(
             for j in (i + 1)..<lines.length() {
               temp.push(lines[j])
             }
-            let (value, next) = parse_block_map(temp, 0, indent + 2)
+            let (value, next) = parse_block_map(ctx, temp, 0, indent + 2)
             items.push(value)
             i = i + next
           } else {
-            items.push(parse_inline_value(rest))
+            items.push(parse_inline_value(ctx, rest))
             i = i + 1
           }
       }
@@ -141,6 +148,7 @@ fn parse_block_seq(
 
 ///|
 fn parse_block_map(
+  ctx : TagContext,
   lines : Array[Line],
   index : Int,
   indent : Int,
@@ -160,7 +168,7 @@ fn parse_block_map(
       break
     }
     let (key_text, value_text) = split_key_value(line)
-    let key = parse_inline_value(key_text)
+    let key = parse_inline_value(ctx, key_text)
     let trimmed_value = value_text.trim_start().to_string()
     if trimmed_value is "" {
       let next_index = next_non_empty(lines, i + 1)
@@ -169,11 +177,13 @@ fn parse_block_map(
         i = next_index
       } else if lines[next_index].indent > indent {
         let child_indent = lines[next_index].indent
-        let (value, next) = parse_block_node(lines, next_index, child_indent)
+        let (value, next) = parse_block_node(
+          ctx, lines, next_index, child_indent,
+        )
         items.push((key, value))
         i = next
       } else if is_seq_line(lines[next_index], indent) {
-        let (value, next) = parse_block_seq(lines, next_index, indent)
+        let (value, next) = parse_block_seq(ctx, lines, next_index, indent)
         items.push((key, value))
         i = next
       } else {
@@ -181,13 +191,13 @@ fn parse_block_map(
         i = next_index
       }
     } else {
-      match try_parse_block_scalar(trimmed_value, lines, i + 1, indent) {
+      match try_parse_block_scalar(ctx, trimmed_value, lines, i + 1, indent) {
         Some((node, next)) => {
           items.push((key, node))
           i = next
         }
         None => {
-          let value = parse_inline_value(trimmed_value)
+          let value = parse_inline_value(ctx, trimmed_value)
           items.push((key, value))
           i = i + 1
         }
@@ -198,7 +208,7 @@ fn parse_block_map(
 }
 
 ///|
-fn parse_inline_value(text : String) -> Yaml raise ParseError {
+fn parse_inline_value(ctx : TagContext, text : String) -> Yaml raise ParseError {
   let trimmed = text.trim().to_string()
   if trimmed is "" {
     return Yaml::Null
@@ -208,7 +218,7 @@ fn parse_inline_value(text : String) -> Yaml raise ParseError {
   match parse_alias(scanner) {
     Some(name) => Yaml::Alias(name)
     None => {
-      let (tag, anchor) = parse_node_props(scanner)
+      let (tag, anchor) = parse_node_props(ctx, scanner)
       scanner.skip_ws_and_comments()
       let rest = trimmed
         .view(start_offset=scanner.offset())
@@ -218,9 +228,9 @@ fn parse_inline_value(text : String) -> Yaml raise ParseError {
       let value = if rest is "" {
         Yaml::Null
       } else if rest.has_prefix("[") || rest.has_prefix("{") {
-        parse_flow_value_from_string(rest)
+        parse_flow_value_from_string(ctx, rest)
       } else if rest.has_prefix("\"") || rest.has_prefix("'") {
-        parse_flow_value_from_string(rest)
+        parse_flow_value_from_string(ctx, rest)
       } else {
         parse_scalar_value(rest)
       }
@@ -255,6 +265,7 @@ fn parse_block_indicator(text : String) -> (Char, Chomp)? {
 
 ///|
 fn try_parse_block_scalar(
+  ctx : TagContext,
   rest : String,
   lines : Array[Line],
   index : Int,
@@ -265,7 +276,7 @@ fn try_parse_block_scalar(
   if parse_alias(scanner) is Some(_) {
     return None
   }
-  let (tag, anchor) = parse_node_props(scanner)
+  let (tag, anchor) = parse_node_props(ctx, scanner)
   scanner.skip_ws_and_comments()
   let tail = rest
     .view(start_offset=scanner.offset())

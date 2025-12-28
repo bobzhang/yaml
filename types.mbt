@@ -13,6 +13,7 @@ pub(all) suberror ParseError {
   InvalidEscape(pos~ : Position, value~ : String)
   UnknownAnchor(name~ : String)
   InvalidMerge(detail~ : String)
+  InvalidDirective(detail~ : String)
   MultipleDocuments(count~ : Int)
   NotImplemented(feature~ : String)
 } derive(Eq, Show, ToJson)

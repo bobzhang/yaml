@@ -1,22 +1,28 @@
 ///|
-fn parse_flow_node(scanner : Scanner) -> Yaml raise ParseError {
+fn parse_flow_node(
+  ctx : TagContext,
+  scanner : Scanner,
+) -> Yaml raise ParseError {
   scanner.skip_ws_and_comments()
   match parse_alias(scanner) {
     Some(name) => Yaml::Alias(name)
     None => {
-      let (tag, anchor) = parse_node_props(scanner)
+      let (tag, anchor) = parse_node_props(ctx, scanner)
       scanner.skip_ws_and_comments()
-      let value = parse_flow_value(scanner)
+      let value = parse_flow_value(ctx, scanner)
       apply_node_props(value, tag, anchor)
     }
   }
 }
 
 ///|
-fn parse_flow_value(scanner : Scanner) -> Yaml raise ParseError {
+fn parse_flow_value(
+  ctx : TagContext,
+  scanner : Scanner,
+) -> Yaml raise ParseError {
   match scanner.peek() {
-    Some('[') => parse_flow_seq(scanner)
-    Some('{') => parse_flow_map(scanner)
+    Some('[') => parse_flow_seq(ctx, scanner)
+    Some('{') => parse_flow_map(ctx, scanner)
     Some('"') => parse_scalar(scanner)
     Some('\'') => parse_scalar(scanner)
     Some(_) => parse_scalar(scanner)
@@ -25,10 +31,13 @@ fn parse_flow_value(scanner : Scanner) -> Yaml raise ParseError {
 }
 
 ///|
-fn parse_flow_value_from_string(text : String) -> Yaml raise ParseError {
+fn parse_flow_value_from_string(
+  ctx : TagContext,
+  text : String,
+) -> Yaml raise ParseError {
   let scanner = Scanner::new(text)
   scanner.skip_ws_and_comments()
-  let value = parse_flow_value(scanner)
+  let value = parse_flow_value(ctx, scanner)
   scanner.skip_ws_and_comments()
   match scanner.peek() {
     None => value
@@ -37,7 +46,7 @@ fn parse_flow_value_from_string(text : String) -> Yaml raise ParseError {
 }
 
 ///|
-fn parse_flow_seq(scanner : Scanner) -> Yaml raise ParseError {
+fn parse_flow_seq(ctx : TagContext, scanner : Scanner) -> Yaml raise ParseError {
   scanner.expect('[')
   let items : Array[Yaml] = []
   scanner.skip_ws_and_comments()
@@ -45,7 +54,7 @@ fn parse_flow_seq(scanner : Scanner) -> Yaml raise ParseError {
     return Yaml::Seq(items)
   }
   while true {
-    let value = parse_flow_node(scanner)
+    let value = parse_flow_node(ctx, scanner)
     items.push(value)
     scanner.skip_ws_and_comments()
     if scanner.eat(']') {
@@ -61,7 +70,7 @@ fn parse_flow_seq(scanner : Scanner) -> Yaml raise ParseError {
 }
 
 ///|
-fn parse_flow_map(scanner : Scanner) -> Yaml raise ParseError {
+fn parse_flow_map(ctx : TagContext, scanner : Scanner) -> Yaml raise ParseError {
   scanner.expect('{')
   let items : Array[(Yaml, Yaml)] = []
   scanner.skip_ws_and_comments()
@@ -69,11 +78,11 @@ fn parse_flow_map(scanner : Scanner) -> Yaml raise ParseError {
     return Yaml::Map(items)
   }
   while true {
-    let key = parse_flow_node(scanner)
+    let key = parse_flow_node(ctx, scanner)
     scanner.skip_ws_and_comments()
     scanner.expect(':')
     scanner.skip_ws_and_comments()
-    let value = parse_flow_node(scanner)
+    let value = parse_flow_node(ctx, scanner)
     items.push((key, value))
     scanner.skip_ws_and_comments()
     if scanner.eat('}') {

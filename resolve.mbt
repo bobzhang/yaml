@@ -122,5 +122,7 @@ fn is_merge_key(key : Yaml) -> Bool {
 
 ///|
 fn is_merge_tag(tag : String) -> Bool {
-  tag is "!!merge" || tag is "!<tag:yaml.org,2002:merge>"
+  tag is "!!merge" ||
+  tag is "!<tag:yaml.org,2002:merge>" ||
+  tag is "tag:yaml.org,2002:merge"
 }
