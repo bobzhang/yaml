@@ -15,7 +15,7 @@ pub(all) suberror ParseError {
 } derive(Eq, Show, ToJson)
 
 ///|
-pub enum Yaml {
+pub(all) enum Yaml {
   Null
   Bool(Bool)
   Int(Int)
@@ -24,8 +24,3 @@ pub enum Yaml {
   Seq(Array[Yaml])
   Map(Array[(Yaml, Yaml)])
 } derive(Eq, Show, ToJson)
-
-///|
-pub fn parse_yaml(_input : String) -> Yaml raise ParseError {
-  raise ParseError::NotImplemented(feature="parser")
-}
