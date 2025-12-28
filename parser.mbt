@@ -5,6 +5,12 @@ pub fn parse_yaml_stream(input : String) -> Array[Yaml] raise ParseError {
 }
 
 ///|
+pub fn parse_yaml_stream_raw(input : String) -> Array[Yaml] raise ParseError {
+  let normalized = strip_bom(input)
+  split_documents(normalized).map(doc => parse_document_raw(doc))
+}
+
+///|
 pub fn parse_yaml(input : String) -> Yaml raise ParseError {
   let docs = parse_yaml_stream(input)
   if docs.length() == 0 {
@@ -35,6 +41,28 @@ fn parse_document(input : String) -> Yaml raise ParseError {
     }
   } else {
     resolve_aliases(parse_block_document(ctx, content))
+  }
+}
+
+///|
+fn parse_document_raw(input : String) -> Yaml raise ParseError {
+  let (ctx, content) = extract_directives(input)
+  let trimmed = content.trim().to_string()
+  if trimmed is "" {
+    return Yaml::Null
+  }
+  if trimmed.has_prefix("[") || trimmed.has_prefix("{") {
+    let scanner = Scanner::new(content)
+    scanner.skip_ws_and_comments()
+    let value = parse_flow_node(ctx, scanner)
+    scanner.skip_ws_and_comments()
+    match scanner.peek() {
+      None => value
+      Some(c) =>
+        raise ParseError::UnexpectedChar(pos=scanner.position(), found=c)
+    }
+  } else {
+    parse_block_document(ctx, content)
   }
 }
 
@@ -136,7 +164,23 @@ fn split_documents(input : String) -> Array[String] {
   let mut has_content = false
   for line_view in normalized.split("\n") {
     let line = line_view.to_string()
-    if is_doc_marker(line) {
+    match doc_start_rest(line) {
+      Some(rest) => {
+        if has_content && !sb.is_empty() {
+          docs.push(sb.to_string())
+          sb.reset()
+        }
+        has_content = false
+        if rest != "" {
+          sb.write_string(rest)
+          sb.write_char('\n')
+          has_content = true
+        }
+        continue
+      }
+      None => ()
+    }
+    if is_doc_end_marker(line) {
       if has_content && !sb.is_empty() {
         docs.push(sb.to_string())
         sb.reset()
@@ -157,7 +201,34 @@ fn split_documents(input : String) -> Array[String] {
 }
 
 ///|
-fn is_doc_marker(line : String) -> Bool {
+fn doc_start_rest(line : String) -> String? {
+  let mut indent = 0
+  let chars = line.to_array()
+  while indent < chars.length() &&
+        (chars[indent] is ' ' || chars[indent] is '\t') {
+    indent = indent + 1
+  }
+  if indent > 0 {
+    return None
+  }
+  let stripped = strip_inline_comment(line).trim().to_string()
+  if stripped.has_prefix("---") {
+    if stripped.length() == 3 {
+      return Some("")
+    }
+    let next = stripped.get_char(3)
+    match next {
+      Some(c) if c.is_whitespace() =>
+        Some(stripped.view(start_offset=3).trim_start().to_string())
+      _ => None
+    }
+  } else {
+    None
+  }
+}
+
+///|
+fn is_doc_end_marker(line : String) -> Bool {
   let mut indent = 0
   let chars = line.to_array()
   while indent < chars.length() &&
@@ -168,7 +239,7 @@ fn is_doc_marker(line : String) -> Bool {
     return false
   }
   let stripped = strip_inline_comment(line).trim().to_string()
-  stripped is "---" || stripped is "..."
+  stripped is "..."
 }
 
 ///|

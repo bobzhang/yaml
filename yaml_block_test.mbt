@@ -222,3 +222,23 @@ test "parse multiline plain scalars in sequences" {
     #|
   assert_eq(parse_yaml(input), Yaml::Seq([Yaml::String("line1 line2")]))
 }
+
+///|
+test "parse anchored nested values" {
+  let input =
+    #|root: &node
+    #|  key: 1
+    #|
+  assert_eq(
+    parse_yaml(input),
+    Yaml::Map([
+      (
+        Yaml::String("root"),
+        Yaml::Anchor(
+          name="node",
+          value=Yaml::Map([(Yaml::String("key"), Yaml::Int(1))]),
+        ),
+      ),
+    ]),
+  )
+}

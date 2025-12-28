@@ -265,6 +265,11 @@ fn parse_value_from_text(
       return (parse_inline_value(ctx, combined), next)
     }
     match
+      try_parse_props_only(ctx, trimmed_value, lines, line_index, indent) {
+      Some((node, next)) => return (node, next)
+      None => ()
+    }
+    match
       try_parse_block_scalar(ctx, trimmed_value, lines, line_index + 1, indent) {
       Some((node, next)) => (node, next)
       None => {
@@ -287,6 +292,38 @@ fn parse_value_from_text(
       }
     }
   }
+}
+
+///|
+fn try_parse_props_only(
+  ctx : TagContext,
+  text : String,
+  lines : Array[Line],
+  line_index : Int,
+  indent : Int,
+) -> (Yaml, Int)? raise ParseError {
+  let scanner = Scanner::new(text)
+  scanner.skip_ws_and_comments()
+  if parse_alias(scanner) is Some(_) {
+    return None
+  }
+  let (tag, anchor) = parse_node_props(ctx, scanner)
+  scanner.skip_ws_and_comments()
+  let rest = text
+    .view(start_offset=scanner.offset())
+    .to_string()
+    .trim_start()
+    .to_string()
+  if rest is "" && (tag is Some(_) || anchor is Some(_)) {
+    let next_index = next_non_empty(lines, line_index + 1)
+    if next_index < lines.length() && lines[next_index].indent > indent {
+      let child_indent = lines[next_index].indent
+      let (value, next) = parse_block_node(ctx, lines, next_index, child_indent)
+      return Some((apply_node_props(value, tag, anchor), next))
+    }
+    return Some((apply_node_props(Yaml::Null, tag, anchor), line_index + 1))
+  }
+  None
 }
 
 ///|
@@ -757,6 +794,7 @@ fn split_key_value_opt(content : String) -> (String, String)? {
   let mut found = false
   let key_sb = StringBuilder::new()
   let mut value_start = 0
+  let mut prev_space = true
   while i < chars.length() {
     let c = chars[i]
     if in_single {
@@ -764,6 +802,7 @@ fn split_key_value_opt(content : String) -> (String, String)? {
         in_single = false
       }
       key_sb.write_char(c)
+      prev_space = false
       i = i + 1
       continue
     }
@@ -771,34 +810,40 @@ fn split_key_value_opt(content : String) -> (String, String)? {
       if c is '"' {
         in_double = false
         key_sb.write_char(c)
+        prev_space = false
         i = i + 1
         continue
       }
       if c is '\\' && i + 1 < chars.length() {
         key_sb.write_char(c)
         key_sb.write_char(chars[i + 1])
+        prev_space = false
         i = i + 2
         continue
       }
       key_sb.write_char(c)
+      prev_space = false
       i = i + 1
       continue
     }
-    if c is '\'' {
+    if c is '\'' && prev_space {
       in_single = true
       key_sb.write_char(c)
+      prev_space = false
       i = i + 1
       continue
     }
-    if c is '"' {
+    if c is '"' && prev_space {
       in_double = true
       key_sb.write_char(c)
+      prev_space = false
       i = i + 1
       continue
     }
     if c is '{' || c is '[' {
       depth = depth + 1
       key_sb.write_char(c)
+      prev_space = c.is_whitespace()
       i = i + 1
       continue
     }
@@ -819,6 +864,7 @@ fn split_key_value_opt(content : String) -> (String, String)? {
       }
     }
     key_sb.write_char(c)
+    prev_space = c.is_whitespace()
     i = i + 1
   }
   if !found {
@@ -901,14 +947,14 @@ fn strip_inline_comment(line : String) -> String {
       i = i + 1
       continue
     }
-    if c is '\'' {
+    if c is '\'' && prev_space {
       in_single = true
       sb.write_char(c)
       prev_space = false
       i = i + 1
       continue
     }
-    if c is '"' {
+    if c is '"' && prev_space {
       in_double = true
       sb.write_char(c)
       prev_space = false

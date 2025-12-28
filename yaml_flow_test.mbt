@@ -12,6 +12,8 @@ test "parse flow scalars" {
   assert_eq(parse_yaml("0b10"), Yaml::Int(2))
   assert_eq(parse_yaml("\"hi\""), Yaml::String("hi"))
   assert_eq(parse_yaml("'hi'"), Yaml::String("hi"))
+  assert_eq(parse_yaml("\"1\""), Yaml::String("1"))
+  assert_eq(parse_yaml("'2'"), Yaml::String("2"))
   assert_eq(parse_yaml("\"line\\nnext\""), Yaml::String("line\nnext"))
   let continued =
     #|"line\

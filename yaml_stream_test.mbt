@@ -25,3 +25,12 @@ test "parse yaml rejects multiple documents" {
     fail("expected multiple document error")
   }
 }
+
+///|
+test "parse inline document start" {
+  let input =
+    #|%YAML 1.2
+    #|--- text
+    #|
+  assert_eq(parse_yaml_stream(input), [Yaml::String("text")])
+}

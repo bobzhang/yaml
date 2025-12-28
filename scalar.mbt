@@ -312,12 +312,11 @@ fn char_from_code(code : Int, scanner : Scanner) -> Char raise ParseError {
 
 ///|
 fn parse_scalar(scanner : Scanner) -> Yaml raise ParseError {
-  let raw = match scanner.peek() {
-    Some('"') => parse_double_quoted(scanner)
-    Some('\'') => parse_single_quoted(scanner)
-    _ => parse_plain_scalar(scanner)
+  match scanner.peek() {
+    Some('"') => Yaml::String(parse_double_quoted(scanner))
+    Some('\'') => Yaml::String(parse_single_quoted(scanner))
+    _ => parse_scalar_value(parse_plain_scalar(scanner))
   }
-  parse_scalar_value(raw)
 }
 
 ///|
