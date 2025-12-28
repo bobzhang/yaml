@@ -58,6 +58,21 @@ test "parse nested block collections" {
 }
 
 ///|
+test "parse indentless sequences" {
+  let input =
+    #|key:
+    #|- a
+    #|- b
+    #|
+  assert_eq(
+    parse_yaml(input),
+    Yaml::Map([
+      (Yaml::String("key"), Yaml::Seq([Yaml::String("a"), Yaml::String("b")])),
+    ]),
+  )
+}
+
+///|
 test "parse block scalars and negatives" {
   assert_eq(parse_yaml("hello world"), Yaml::String("hello world"))
   assert_eq(parse_yaml("-1"), Yaml::Int(-1))

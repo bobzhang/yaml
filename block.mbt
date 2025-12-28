@@ -164,14 +164,21 @@ fn parse_block_map(
     let trimmed_value = value_text.trim_start().to_string()
     if trimmed_value is "" {
       let next_index = next_non_empty(lines, i + 1)
-      if next_index >= lines.length() || lines[next_index].indent <= indent {
+      if next_index >= lines.length() {
         items.push((key, Yaml::Null))
         i = next_index
-      } else {
+      } else if lines[next_index].indent > indent {
         let child_indent = lines[next_index].indent
         let (value, next) = parse_block_node(lines, next_index, child_indent)
         items.push((key, value))
         i = next
+      } else if is_seq_line(lines[next_index], indent) {
+        let (value, next) = parse_block_seq(lines, next_index, indent)
+        items.push((key, value))
+        i = next
+      } else {
+        items.push((key, Yaml::Null))
+        i = next_index
       }
     } else {
       match try_parse_block_scalar(trimmed_value, lines, i + 1, indent) {
