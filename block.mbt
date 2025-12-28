@@ -534,21 +534,29 @@ fn collect_plain_continuation(
   let mut base_indent : Int? = None
   while i < lines.length() {
     let line = lines[i]
+    let raw = line.raw.view(start_offset=line.indent).to_string()
+    if raw.trim() is "" {
+      let next_index = next_non_empty(lines, i + 1)
+      if next_index >= lines.length() {
+        break
+      }
+      if allow_same_indent {
+        if lines[next_index].indent < indent {
+          break
+        }
+      } else if lines[next_index].indent <= indent {
+        break
+      }
+      parts.push("")
+      i = i + 1
+      continue
+    }
     if allow_same_indent {
       if line.indent < indent {
         break
       }
     } else if line.indent <= indent {
       break
-    }
-    let raw = line.raw.view(start_offset=line.indent).to_string()
-    if raw.trim() is "" {
-      if is_trailing_blank(lines, i) {
-        break
-      }
-      parts.push("")
-      i = i + 1
-      continue
     }
     if base_indent is None {
       base_indent = Some(line.indent)
@@ -568,18 +576,6 @@ fn collect_plain_continuation(
     i = i + 1
   }
   (parts, i)
-}
-
-///|
-fn is_trailing_blank(lines : Array[Line], start : Int) -> Bool {
-  let mut i = start
-  while i < lines.length() {
-    if lines[i].content != "" {
-      return false
-    }
-    i = i + 1
-  }
-  true
 }
 
 ///|
@@ -776,9 +772,9 @@ fn fold_lines(lines : Array[String]) -> String {
     let line = lines[idx]
     let is_blank = line is ""
     if idx > 0 {
-      if is_blank || prev_blank {
+      if is_blank {
         sb.write_char('\n')
-      } else {
+      } else if !prev_blank {
         sb.write_char(' ')
       }
     }

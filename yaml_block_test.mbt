@@ -139,7 +139,6 @@ test "parse block scalars" {
     #|
   let folded_value =
     #|a b
-    #|
     #|c
     #|
   assert_eq(
