@@ -14,6 +14,7 @@ pub(all) suberror ParseError {
   UnknownAnchor(name~ : String)
   InvalidMerge(detail~ : String)
   InvalidDirective(detail~ : String)
+  InvalidTagValue(tag~ : String, value~ : String)
   MultipleDocuments(count~ : Int)
   NotImplemented(feature~ : String)
 } derive(Eq, Show, ToJson)

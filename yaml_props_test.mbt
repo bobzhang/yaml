@@ -38,6 +38,22 @@ test "parse tags" {
 }
 
 ///|
+test "parse core tagged scalars" {
+  assert_eq(
+    parse_yaml("!!str 3"),
+    Yaml::Tagged(tag="tag:yaml.org,2002:str", value=Yaml::String("3")),
+  )
+  assert_eq(
+    parse_yaml("!!int \"3\""),
+    Yaml::Tagged(tag="tag:yaml.org,2002:int", value=Yaml::Int(3)),
+  )
+  assert_eq(
+    parse_yaml("!!bool \"true\""),
+    Yaml::Tagged(tag="tag:yaml.org,2002:bool", value=Yaml::Bool(true)),
+  )
+}
+
+///|
 test "parse flow props" {
   assert_eq(
     parse_yaml("[&a 1, *a]"),

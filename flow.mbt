@@ -9,7 +9,18 @@ fn parse_flow_node(
     None => {
       let (tag, anchor) = parse_node_props(ctx, scanner)
       scanner.skip_ws_and_comments()
-      let value = parse_flow_value(ctx, scanner)
+      let value = if tag is Some(t) && is_str_tag(t) {
+        match scanner.peek() {
+          Some('[') => parse_flow_value(ctx, scanner)
+          Some('{') => parse_flow_value(ctx, scanner)
+          Some('"') => parse_flow_value(ctx, scanner)
+          Some('\'') => parse_flow_value(ctx, scanner)
+          Some(_) => Yaml::String(parse_plain_scalar(scanner))
+          None => raise ParseError::UnexpectedEof(pos=scanner.position())
+        }
+      } else {
+        parse_flow_value(ctx, scanner)
+      }
       apply_node_props(value, tag, anchor)
     }
   }

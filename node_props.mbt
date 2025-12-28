@@ -32,15 +32,79 @@ fn parse_alias(scanner : Scanner) -> String? raise ParseError {
 }
 
 ///|
-fn apply_node_props(value : Yaml, tag : String?, anchor : String?) -> Yaml {
+fn apply_node_props(
+  value : Yaml,
+  tag : String?,
+  anchor : String?,
+) -> Yaml raise ParseError {
   let mut node = value
   if tag is Some(t) {
+    node = coerce_tag(t, node)
     node = Yaml::Tagged(tag=t, value=node)
   }
   if anchor is Some(a) {
     node = Yaml::Anchor(name=a, value=node)
   }
   node
+}
+
+///|
+fn coerce_tag(tag : String, value : Yaml) -> Yaml raise ParseError {
+  if is_core_tag(tag, "null") {
+    return Yaml::Null
+  }
+  if is_core_tag(tag, "bool") {
+    match value {
+      Bool(_) => value
+      String(s) => parse_tagged_bool(tag, s)
+      _ => value
+    }
+  } else if is_core_tag(tag, "int") {
+    match value {
+      Int(_) => value
+      String(s) => parse_tagged_int(tag, s)
+      _ => value
+    }
+  } else if is_core_tag(tag, "float") {
+    match value {
+      Float(_) => value
+      String(s) => parse_tagged_float(tag, s)
+      _ => value
+    }
+  } else if is_core_tag(tag, "str") {
+    value
+  } else {
+    value
+  }
+}
+
+///|
+fn parse_tagged_bool(tag : String, raw : String) -> Yaml raise ParseError {
+  let lowered = raw.to_lower()
+  if lowered is "true" {
+    Yaml::Bool(true)
+  } else if lowered is "false" {
+    Yaml::Bool(false)
+  } else {
+    raise ParseError::InvalidTagValue(tag~, value=raw)
+  }
+}
+
+///|
+fn parse_tagged_int(tag : String, raw : String) -> Yaml raise ParseError {
+  match parse_number(raw) {
+    Some(Yaml::Int(v)) => Yaml::Int(v)
+    _ => raise ParseError::InvalidTagValue(tag~, value=raw)
+  }
+}
+
+///|
+fn parse_tagged_float(tag : String, raw : String) -> Yaml raise ParseError {
+  match parse_number(raw) {
+    Some(Yaml::Float(v)) => Yaml::Float(v)
+    Some(Yaml::Int(v)) => Yaml::Float(Float::from_int(v))
+    _ => raise ParseError::InvalidTagValue(tag~, value=raw)
+  }
 }
 
 ///|
@@ -76,6 +140,19 @@ fn read_verbatim_tag(scanner : Scanner) -> String raise ParseError {
   } else {
     sb.to_string()
   }
+}
+
+///|
+fn is_core_tag(tag : String, name : String) -> Bool {
+  let full = "tag:yaml.org,2002:" + name
+  let short = "!!" + name
+  let verbatim = "!<tag:yaml.org,2002:" + name + ">"
+  tag == full || tag == short || tag == verbatim
+}
+
+///|
+fn is_str_tag(tag : String) -> Bool {
+  is_core_tag(tag, "str")
 }
 
 ///|
