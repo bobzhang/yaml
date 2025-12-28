@@ -11,6 +11,7 @@ pub(all) suberror ParseError {
   InvalidIndent(pos~ : Position)
   InvalidNumber(pos~ : Position, value~ : String)
   InvalidEscape(pos~ : Position, value~ : String)
+  UnknownAnchor(name~ : String)
   NotImplemented(feature~ : String)
 } derive(Eq, Show, ToJson)
 
@@ -23,4 +24,7 @@ pub(all) enum Yaml {
   String(String)
   Seq(Array[Yaml])
   Map(Array[(Yaml, Yaml)])
+  Alias(String)
+  Anchor(name~ : String, value~ : Yaml)
+  Tagged(tag~ : String, value~ : Yaml)
 } derive(Eq, Show, ToJson)

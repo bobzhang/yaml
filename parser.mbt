@@ -10,11 +10,11 @@ pub fn parse_yaml(input : String) -> Yaml raise ParseError {
     let value = parse_flow_node(scanner)
     scanner.skip_ws_and_comments()
     match scanner.peek() {
-      None => value
+      None => resolve_aliases(value)
       Some(c) =>
         raise ParseError::UnexpectedChar(pos=scanner.position(), found=c)
     }
   } else {
-    parse_block_document(input)
+    resolve_aliases(parse_block_document(input))
   }
 }

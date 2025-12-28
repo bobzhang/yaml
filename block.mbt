@@ -109,34 +109,30 @@ fn parse_block_seq(
         i = next
       }
     } else {
-      let indicator = parse_block_indicator(rest)
-      if indicator is Some((style, chomp)) {
-        let (value, next) = parse_block_scalar(
-          lines,
-          i + 1,
-          indent,
-          style,
-          chomp,
-        )
-        items.push(Yaml::String(value))
-        i = next
-      } else if split_key_value_opt(rest) is Some(_) {
-        let virtual_line = {
-          number: line.number,
-          indent: indent + 2,
-          raw: rest,
-          content: rest,
+      match try_parse_block_scalar(rest, lines, i + 1, indent) {
+        Some((node, next)) => {
+          items.push(node)
+          i = next
         }
-        let temp : Array[Line] = [virtual_line]
-        for j in (i + 1)..<lines.length() {
-          temp.push(lines[j])
-        }
-        let (value, next) = parse_block_map(temp, 0, indent + 2)
-        items.push(value)
-        i = i + next
-      } else {
-        items.push(parse_inline_value(rest))
-        i = i + 1
+        None =>
+          if split_key_value_opt(rest) is Some(_) {
+            let virtual_line = {
+              number: line.number,
+              indent: indent + 2,
+              raw: rest,
+              content: rest,
+            }
+            let temp : Array[Line] = [virtual_line]
+            for j in (i + 1)..<lines.length() {
+              temp.push(lines[j])
+            }
+            let (value, next) = parse_block_map(temp, 0, indent + 2)
+            items.push(value)
+            i = i + next
+          } else {
+            items.push(parse_inline_value(rest))
+            i = i + 1
+          }
       }
     }
   }
@@ -178,21 +174,16 @@ fn parse_block_map(
         i = next
       }
     } else {
-      let indicator = parse_block_indicator(trimmed_value)
-      if indicator is Some((style, chomp)) {
-        let (value, next) = parse_block_scalar(
-          lines,
-          i + 1,
-          indent,
-          style,
-          chomp,
-        )
-        items.push((key, Yaml::String(value)))
-        i = next
-      } else {
-        let value = parse_inline_value(trimmed_value)
-        items.push((key, value))
-        i = i + 1
+      match try_parse_block_scalar(trimmed_value, lines, i + 1, indent) {
+        Some((node, next)) => {
+          items.push((key, node))
+          i = next
+        }
+        None => {
+          let value = parse_inline_value(trimmed_value)
+          items.push((key, value))
+          i = i + 1
+        }
       }
     }
   }
@@ -205,24 +196,29 @@ fn parse_inline_value(text : String) -> Yaml raise ParseError {
   if trimmed is "" {
     return Yaml::Null
   }
-  if trimmed.has_prefix("[") || trimmed.has_prefix("{") {
-    let scanner = Scanner::new(trimmed)
-    scanner.skip_ws_and_comments()
-    let value = parse_flow_node(scanner)
-    scanner.skip_ws_and_comments()
-    match scanner.peek() {
-      None => value
-      Some(c) =>
-        raise ParseError::UnexpectedChar(pos=scanner.position(), found=c)
+  let scanner = Scanner::new(trimmed)
+  scanner.skip_ws_and_comments()
+  match parse_alias(scanner) {
+    Some(name) => Yaml::Alias(name)
+    None => {
+      let (tag, anchor) = parse_node_props(scanner)
+      scanner.skip_ws_and_comments()
+      let rest = trimmed
+        .view(start_offset=scanner.offset())
+        .to_string()
+        .trim_start()
+        .to_string()
+      let value = if rest is "" {
+        Yaml::Null
+      } else if rest.has_prefix("[") || rest.has_prefix("{") {
+        parse_flow_value_from_string(rest)
+      } else if rest.has_prefix("\"") || rest.has_prefix("'") {
+        parse_flow_value_from_string(rest)
+      } else {
+        parse_scalar_value(rest)
+      }
+      apply_node_props(value, tag, anchor)
     }
-  } else if trimmed.has_prefix("\"") || trimmed.has_prefix("\'") {
-    let scanner = Scanner::new(trimmed)
-    scanner.skip_ws_and_comments()
-    let value = parse_flow_node(scanner)
-    scanner.skip_ws_and_comments()
-    value
-  } else {
-    parse_scalar_value(trimmed)
   }
 }
 
@@ -247,6 +243,36 @@ fn parse_block_indicator(text : String) -> (Char, Chomp)? {
     Some((style, Chomp::Strip))
   } else {
     None
+  }
+}
+
+///|
+fn try_parse_block_scalar(
+  rest : String,
+  lines : Array[Line],
+  index : Int,
+  parent_indent : Int,
+) -> (Yaml, Int)? raise ParseError {
+  let scanner = Scanner::new(rest)
+  scanner.skip_ws_and_comments()
+  if parse_alias(scanner) is Some(_) {
+    return None
+  }
+  let (tag, anchor) = parse_node_props(scanner)
+  scanner.skip_ws_and_comments()
+  let tail = rest
+    .view(start_offset=scanner.offset())
+    .to_string()
+    .trim_start()
+    .to_string()
+  match parse_block_indicator(tail) {
+    None => None
+    Some((style, chomp)) => {
+      let (value, next) = parse_block_scalar(
+        lines, index, parent_indent, style, chomp,
+      )
+      Some((apply_node_props(Yaml::String(value), tag, anchor), next))
+    }
   }
 }
 

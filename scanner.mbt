@@ -17,6 +17,11 @@ fn Scanner::position(self : Scanner) -> Position {
 }
 
 ///|
+fn Scanner::offset(self : Scanner) -> Int {
+  self.pos
+}
+
+///|
 fn Scanner::peek(self : Scanner) -> Char? {
   self.input.get_char(self.pos)
 }
