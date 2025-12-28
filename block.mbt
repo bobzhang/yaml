@@ -783,7 +783,7 @@ fn parse_block_scalar(
   let base = if style is '|' {
     join_lines(collected)
   } else {
-    fold_lines(collected)
+    fold_block_lines(collected)
   }
   let with_newline = if collected.length() > 0 { base + "\n" } else { "" }
   let value = apply_chomp(with_newline, chomp)
@@ -813,6 +813,26 @@ fn fold_lines(lines : Array[String]) -> String {
       if is_blank {
         sb.write_char('\n')
       } else if !prev_blank {
+        sb.write_char(' ')
+      }
+    }
+    sb.write_string(line)
+    prev_blank = is_blank
+  }
+  sb.to_string()
+}
+
+///|
+fn fold_block_lines(lines : Array[String]) -> String {
+  let sb = StringBuilder::new()
+  let mut prev_blank = false
+  for idx in 0..<lines.length() {
+    let line = lines[idx]
+    let is_blank = line is ""
+    if idx > 0 {
+      if is_blank || prev_blank {
+        sb.write_char('\n')
+      } else {
         sb.write_char(' ')
       }
     }
