@@ -789,17 +789,27 @@ fn parse_block_scalar(
   style : Char,
   chomp : Chomp,
   indent_hint : Int?,
-) -> (String, Int) {
+) -> (String, Int) raise ParseError {
   let mut i = index
   let mut content_indent : Int? = None
   let collected : Array[String] = []
   let mut pending_blank = 0
+  let mut max_blank_indent : Int? = None
   while i < lines.length() {
     let line = lines[i]
     let raw_content = line.raw.view(start_offset=line.indent).to_string()
     if raw_content.trim() is "" {
       if content_indent is None && line.indent <= parent_indent {
         break
+      }
+      if content_indent is None && line.indent > parent_indent {
+        match max_blank_indent {
+          None => max_blank_indent = Some(line.indent)
+          Some(prev) =>
+            if line.indent > prev {
+              max_blank_indent = Some(line.indent)
+            }
+        }
       }
       pending_blank = pending_blank + 1
       i = i + 1
@@ -809,6 +819,16 @@ fn parse_block_scalar(
       break
     }
     if content_indent is None {
+      match max_blank_indent {
+        Some(max_indent) =>
+          if line.indent < max_indent {
+            raise ParseError::InvalidIndent(pos={
+              line: line.number,
+              column: line.indent + 1,
+            })
+          }
+        None => ()
+      }
       content_indent = match indent_hint {
         None => Some(line.indent)
         Some(hint) => Some(parent_indent + hint)
