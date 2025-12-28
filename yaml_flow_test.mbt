@@ -6,9 +6,21 @@ test "parse flow scalars" {
   assert_eq(parse_yaml("false"), Yaml::Bool(false))
   assert_eq(parse_yaml("42"), Yaml::Int(42))
   assert_eq(parse_yaml("3.5"), Yaml::Float(Float::from_double(3.5)))
+  assert_eq(parse_yaml("1_000"), Yaml::Int(1000))
+  assert_eq(parse_yaml("0x10"), Yaml::Int(16))
+  assert_eq(parse_yaml("0o10"), Yaml::Int(8))
+  assert_eq(parse_yaml("0b10"), Yaml::Int(2))
   assert_eq(parse_yaml("\"hi\""), Yaml::String("hi"))
   assert_eq(parse_yaml("'hi'"), Yaml::String("hi"))
   assert_eq(parse_yaml("\"line\\nnext\""), Yaml::String("line\nnext"))
+}
+
+///|
+test "parse special floats" {
+  match parse_yaml(".inf") {
+    Float(value) => assert_true(value.is_inf())
+    _ => fail("expected float")
+  }
 }
 
 ///|

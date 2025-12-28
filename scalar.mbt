@@ -190,8 +190,14 @@ fn parse_scalar_value(raw : String) -> Yaml {
 
 ///|
 fn parse_number(raw : String) -> Yaml? {
+  let normalized = raw.replace_all(old="_", new="")
+  let lowered = normalized.to_lower()
+  match parse_special_float(lowered) {
+    Some(value) => return Some(Yaml::Float(Float::from_double(value)))
+    None => ()
+  }
   let mut has_digit = false
-  for c in raw {
+  for c in normalized {
     if c.is_ascii_digit() {
       has_digit = true
     }
@@ -199,18 +205,70 @@ fn parse_number(raw : String) -> Yaml? {
   if !has_digit {
     return None
   }
-  let has_float = raw.contains(".") || raw.contains("e") || raw.contains("E")
+  let (sign, body) = strip_sign(normalized)
+  if body.has_prefix("0x") || body.has_prefix("0X") {
+    return parse_int_base(body.view(start_offset=2).to_string(), 16, sign)
+  }
+  if body.has_prefix("0o") || body.has_prefix("0O") {
+    return parse_int_base(body.view(start_offset=2).to_string(), 8, sign)
+  }
+  if body.has_prefix("0b") || body.has_prefix("0B") {
+    return parse_int_base(body.view(start_offset=2).to_string(), 2, sign)
+  }
+  let has_float = lowered.contains(".") ||
+    lowered.contains("e") ||
+    lowered.contains("E")
   if has_float {
-    try @strconv.parse_double(raw[:]) catch {
+    try @strconv.parse_double(lowered[:]) catch {
       _ => None
     } noraise {
       value => Some(Yaml::Float(Float::from_double(value)))
     }
   } else {
-    try @strconv.parse_int(raw[:]) catch {
+    try @strconv.parse_int(lowered[:]) catch {
       _ => None
     } noraise {
       value => Some(Yaml::Int(value))
     }
+  }
+}
+
+///|
+fn strip_sign(value : String) -> (Int, String) {
+  if value.has_prefix("-") {
+    (-1, value.view(start_offset=1).to_string())
+  } else if value.has_prefix("+") {
+    (1, value.view(start_offset=1).to_string())
+  } else {
+    (1, value)
+  }
+}
+
+///|
+fn parse_int_base(digits : String, base : Int, sign : Int) -> Yaml? {
+  try @strconv.parse_int(digits[:], base~) catch {
+    _ => None
+  } noraise {
+    value => Some(Yaml::Int(value * sign))
+  }
+}
+
+///|
+fn parse_special_float(lowered : String) -> Double? {
+  if lowered is ".inf" || lowered is "+.inf" || lowered is "-.inf" {
+    let sign = if lowered.has_prefix("-") { -1.0 } else { 1.0 }
+    try @strconv.parse_double("inf") catch {
+      _ => None
+    } noraise {
+      value => Some(value * sign)
+    }
+  } else if lowered is ".nan" || lowered is "+.nan" || lowered is "-.nan" {
+    try @strconv.parse_double("nan") catch {
+      _ => None
+    } noraise {
+      value => Some(value)
+    }
+  } else {
+    None
   }
 }
