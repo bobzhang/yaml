@@ -81,6 +81,14 @@ test "parse flow collections" {
     ]),
   )
   assert_eq(
+    parse_yaml("{: 1}"),
+    Yaml::Map([(Yaml::Null, Yaml::Int(1))]),
+  )
+  assert_eq(
+    parse_yaml("{:}"),
+    Yaml::Map([(Yaml::Null, Yaml::Null)]),
+  )
+  assert_eq(
     parse_yaml("{hello world: 1}"),
     Yaml::Map([(Yaml::String("hello world"), Yaml::Int(1))]),
   )

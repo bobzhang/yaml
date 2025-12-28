@@ -116,6 +116,15 @@ fn parse_flow_map(ctx : TagContext, scanner : Scanner) -> Yaml raise ParseError 
         parse_flow_node(ctx, scanner)
       }
       items.push((key, value))
+    } else if scanner.peek() is Some(':') {
+      ignore(scanner.advance())
+      scanner.skip_ws_and_comments()
+      let value = if scanner.peek() is Some(',') || scanner.peek() is Some('}') {
+        Yaml::Null
+      } else {
+        parse_flow_node(ctx, scanner)
+      }
+      items.push((Yaml::Null, value))
     } else {
       let key = parse_flow_node(ctx, scanner)
       scanner.skip_ws_and_comments()
