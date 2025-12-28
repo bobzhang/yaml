@@ -139,13 +139,40 @@ fn parse_directive(ctx : TagContext, line : String) -> Unit raise ParseError {
     }
     ctx.seen_yaml = true
     let version = parts[1]
-    if !version.has_prefix("1.") {
+    if !is_valid_yaml_version(version) {
       raise ParseError::InvalidDirective(detail="unsupported YAML version")
     }
   } else {
     // Ignore unknown or reserved directives per YAML 1.2.
     ()
   }
+}
+
+///|
+fn is_valid_yaml_version(version : String) -> Bool {
+  if !version.has_prefix("1.") {
+    return false
+  }
+  let chars = version.to_array()
+  let mut i = 2
+  let mut saw_digit = false
+  let mut prev_dot = false
+  while i < chars.length() {
+    let c = chars[i]
+    if c.is_ascii_digit() {
+      saw_digit = true
+      prev_dot = false
+    } else if c is '.' {
+      if prev_dot {
+        return false
+      }
+      prev_dot = true
+    } else {
+      return false
+    }
+    i = i + 1
+  }
+  saw_digit && !prev_dot
 }
 
 ///|
@@ -226,6 +253,11 @@ fn split_documents(input : String) -> Array[String] raise ParseError {
         explicit_start = true
         content_seen = false
         if rest != "" {
+          if split_key_value_opt(rest) is Some(_) {
+            raise ParseError::InvalidDirective(
+              detail="mapping on document start line",
+            )
+          }
           append_line(rest)
           if !is_non_content_line(rest) {
             content_seen = true
@@ -286,11 +318,6 @@ fn split_documents(input : String) -> Array[String] raise ParseError {
       }
       append_line(line)
       continue
-    }
-    if trimmed.has_prefix("%YAML") || trimmed.has_prefix("%TAG") {
-      raise ParseError::InvalidDirective(
-        detail="directive not at document start",
-      )
     }
     if !is_non_content_line(line) {
       content_seen = true

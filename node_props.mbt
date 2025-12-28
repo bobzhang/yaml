@@ -145,14 +145,7 @@ fn coerce_tag(tag : String, value : Yaml) -> Yaml raise ParseError {
   } else if is_core_tag(tag, "pairs") {
     validate_tagged_pairs(tag, value)
   } else if is_core_tag(tag, "str") {
-    match value {
-      String(_) => value
-      Null => Yaml::String("")
-      Bool(b) => Yaml::String(b.to_string())
-      Int(i) => Yaml::String(i.to_string())
-      Float(f) => Yaml::String(f.to_string())
-      _ => value
-    }
+    value
   } else {
     value
   }
@@ -182,7 +175,7 @@ fn parse_tagged_int(tag : String, raw : String) -> Yaml raise ParseError {
 fn parse_tagged_float(tag : String, raw : String) -> Yaml raise ParseError {
   match parse_number(raw) {
     Some(Yaml::Float(v)) => Yaml::Float(v)
-    Some(Yaml::Int(v)) => Yaml::Float(Float::from_int(v))
+    Some(Yaml::Int(v)) => Yaml::Float(Double::from_int(v))
     _ => raise ParseError::InvalidTagValue(tag~, value=raw)
   }
 }
@@ -356,18 +349,7 @@ fn is_anchor_break(c : Char) -> Bool {
   c is '{' ||
   c is '}' ||
   c is ',' ||
-  c is '?' ||
-  c is '#' ||
-  c is '&' ||
-  c is '*' ||
-  c is '!' ||
-  c is '|' ||
-  c is '>' ||
-  c is '\'' ||
-  c is '"' ||
-  c is '%' ||
-  c is '@' ||
-  c is '`'
+  c is '#'
 }
 
 ///|

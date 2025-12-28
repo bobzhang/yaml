@@ -96,7 +96,7 @@ fn tree_obj(kind : String, fields : Array[(String, Json)]) -> Json {
 }
 
 ///|
-fn float_to_json_value(value : Float) -> Json {
+fn float_to_json_value(value : Double) -> Json {
   if value.is_nan() {
     Json::string("nan")
   } else if value.is_pos_inf() {
@@ -104,7 +104,7 @@ fn float_to_json_value(value : Float) -> Json {
   } else if value.is_neg_inf() {
     Json::string("-inf")
   } else {
-    Json::number(value.to_double())
+    Json::number(value)
   }
 }
 
@@ -129,6 +129,8 @@ fn yaml_to_json_value(value : @yaml.Yaml) -> Json raise @yaml.ParseError {
           Map(items) => set_map_to_json(items)
           _ => yaml_to_json_value(value)
         }
+      } else if is_str_tag(tag) || is_non_specific_tag(tag) {
+        Json::string(scalar_to_string(strip_props(value)))
       } else {
         ignore(tag)
         yaml_to_json_value(value)
@@ -146,10 +148,9 @@ fn map_to_json(
   let obj : Map[String, Json] = {}
   for pair in items {
     let (key, value) = pair
-    let key_value = strip_props(key)
-    match key_value {
-      String(s) => obj[s] = yaml_to_json_value(value)
-      _ =>
+    match key_to_string(key) {
+      Some(s) => obj[s] = yaml_to_json_value(value)
+      None =>
         raise @yaml.ParseError::InvalidTagValue(
           tag="json",
           value="non-string key",
@@ -166,10 +167,9 @@ fn set_map_to_json(
   let obj : Map[String, Json] = {}
   for pair in items {
     let (key, _value) = pair
-    let key_value = strip_props(key)
-    match key_value {
-      String(s) => obj[s] = Json::null()
-      _ =>
+    match key_to_string(key) {
+      Some(s) => obj[s] = Json::null()
+      None =>
         raise @yaml.ParseError::InvalidTagValue(
           tag="json",
           value="non-string key",
@@ -184,6 +184,59 @@ fn is_set_tag(tag : String) -> Bool {
   tag is "tag:yaml.org,2002:set" ||
   tag is "!!set" ||
   tag is "!<tag:yaml.org,2002:set>"
+}
+
+///|
+fn is_str_tag(tag : String) -> Bool {
+  tag is "tag:yaml.org,2002:str" ||
+  tag is "!!str" ||
+  tag is "!<tag:yaml.org,2002:str>"
+}
+
+///|
+fn is_non_specific_tag(tag : String) -> Bool {
+  tag is "!"
+}
+
+///|
+fn scalar_to_string(value : @yaml.Yaml) -> String {
+  match value {
+    String(s) => s
+    Null => ""
+    Bool(b) => b.to_string()
+    Int(i) => i.to_string()
+    Float(f) => f.to_string()
+    Binary(bytes) => @yaml.encode_base64(bytes)
+    Anchor(name~, value~) => {
+      ignore(name)
+      scalar_to_string(value)
+    }
+    Tagged(tag~, value~) => {
+      ignore(tag)
+      scalar_to_string(value)
+    }
+    Seq(_) => ""
+    Map(_) => ""
+    Alias(_) => ""
+  }
+}
+
+///|
+fn key_to_string(value : @yaml.Yaml) -> String? {
+  match value {
+    String(s) => Some(s)
+    Anchor(name~, value~) => {
+      ignore(name)
+      key_to_string(value)
+    }
+    Tagged(tag~, value~) =>
+      if is_str_tag(tag) || is_non_specific_tag(tag) {
+        Some(scalar_to_string(strip_props(value)))
+      } else {
+        key_to_string(value)
+      }
+    _ => None
+  }
 }
 
 ///|

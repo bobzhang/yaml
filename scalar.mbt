@@ -491,6 +491,9 @@ fn parse_scalar(scanner : Scanner) -> Yaml raise ParseError {
 
 ///|
 fn parse_scalar_value(raw : String) -> Yaml {
+  if raw is "" {
+    return Yaml::Null
+  }
   let lowered = raw.to_lower()
   if lowered is "null" || raw is "~" {
     Yaml::Null
@@ -511,7 +514,7 @@ fn parse_number(raw : String) -> Yaml? {
   let normalized = raw.replace_all(old="_", new="")
   let lowered = normalized.to_lower()
   match parse_special_float(lowered) {
-    Some(value) => return Some(Yaml::Float(Float::from_double(value)))
+    Some(value) => return Some(Yaml::Float(value))
     None => ()
   }
   let mut has_digit = false
@@ -540,7 +543,7 @@ fn parse_number(raw : String) -> Yaml? {
     try @strconv.parse_double(lowered[:]) catch {
       _ => None
     } noraise {
-      value => Some(Yaml::Float(Float::from_double(value)))
+      value => Some(Yaml::Float(value))
     }
   } else {
     try @strconv.parse_int(lowered[:]) catch {

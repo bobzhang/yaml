@@ -24,7 +24,7 @@ pub(all) enum Yaml {
   Null
   Bool(Bool)
   Int(Int)
-  Float(Float)
+  Float(Double)
   String(String)
   Binary(Bytes)
   Seq(Array[Yaml])
