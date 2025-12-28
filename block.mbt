@@ -132,7 +132,7 @@ fn parse_block_seq(
       } else {
         let child_indent = lines[next_index].indent
         let (value, next) =
-          parse_block_node(ctx, lines, next_index, child_indent, false)
+          parse_block_node(ctx, lines, next_index, child_indent, true)
         items.push(value)
         i = next
       }
@@ -300,7 +300,7 @@ fn parse_value_from_text(
       (Yaml::Null, next_index)
     } else if lines[next_index].indent > indent {
       let child_indent = lines[next_index].indent
-      parse_block_node(ctx, lines, next_index, child_indent, false)
+      parse_block_node(ctx, lines, next_index, child_indent, true)
     } else if is_seq_line(lines[next_index], indent) {
       parse_block_seq(ctx, lines, next_index, indent)
     } else {
@@ -308,11 +308,13 @@ fn parse_value_from_text(
     }
   } else {
     if trimmed_value.has_prefix("\"") && !is_terminated_double(trimmed_value) {
-      let (combined, next) = collect_quoted_multiline(lines, line_index, '"')
+      let (combined, next) =
+        collect_quoted_multiline(lines, line_index, '"', trimmed_value)
       return (parse_inline_value(ctx, combined), next)
     }
     if trimmed_value.has_prefix("'") && !is_terminated_single(trimmed_value) {
-      let (combined, next) = collect_quoted_multiline(lines, line_index, '\'')
+      let (combined, next) =
+        collect_quoted_multiline(lines, line_index, '\'', trimmed_value)
       return (parse_inline_value(ctx, combined), next)
     }
     match
@@ -381,7 +383,7 @@ fn try_parse_props_only(
       if next_line.indent > indent {
         let child_indent = next_line.indent
         let (value, next) =
-          parse_block_node(ctx, lines, next_index, child_indent, false)
+          parse_block_node(ctx, lines, next_index, child_indent, true)
         return Some((apply_node_props(value, tag, anchor), next))
       }
       if allow_same_indent_props && next_line.indent == indent {
@@ -400,8 +402,9 @@ fn collect_quoted_multiline(
   lines : Array[Line],
   index : Int,
   quote : Char,
+  first : String,
 ) -> (String, Int) raise ParseError {
-  let mut combined = lines[index].content.trim_end().to_string()
+  let mut combined = first.trim_end().to_string()
   let mut i = index + 1
   while i < lines.length() {
     let raw = lines[i].raw.view(start_offset=lines[i].indent).to_string()
