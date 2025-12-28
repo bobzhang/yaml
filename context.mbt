@@ -2,6 +2,7 @@
 priv struct TagContext {
   handles : Map[String, String]
   coerce_binary : Bool
+  mut seen_yaml : Bool
 }
 
 ///|
@@ -9,7 +10,7 @@ fn TagContext::new() -> TagContext {
   let handles : Map[String, String] = {}
   handles["!!"] = "tag:yaml.org,2002:"
   handles["!"] = "!"
-  { handles, coerce_binary: true }
+  { handles, coerce_binary: true, seen_yaml: false }
 }
 
 ///|
@@ -17,7 +18,7 @@ fn TagContext::new_raw() -> TagContext {
   let handles : Map[String, String] = {}
   handles["!!"] = "tag:yaml.org,2002:"
   handles["!"] = "!"
-  { handles, coerce_binary: false }
+  { handles, coerce_binary: false, seen_yaml: false }
 }
 
 ///|
@@ -30,7 +31,10 @@ fn TagContext::set_handle(
 }
 
 ///|
-fn TagContext::expand(self : TagContext, full_tag : String) -> String {
+fn TagContext::expand(
+  self : TagContext,
+  full_tag : String,
+) -> String raise ParseError {
   if !full_tag.has_prefix("!") {
     return full_tag
   }
@@ -41,7 +45,8 @@ fn TagContext::expand(self : TagContext, full_tag : String) -> String {
       let suffix = full_tag.view(start_offset=idx + 1).to_string()
       match self.handles.get(handle) {
         Some(prefix) => decode_tag_uri(prefix + suffix)
-        None => decode_tag_uri(full_tag)
+        None =>
+          raise ParseError::InvalidTagValue(tag="tag", value=full_tag)
       }
     }
   }

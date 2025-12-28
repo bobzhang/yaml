@@ -38,36 +38,68 @@ fn apply_node_props(
   anchor : String?,
   coerce_binary : Bool,
 ) -> Yaml raise ParseError {
-  let mut node = value
-  if tag is Some(t) {
-    if !coerce_binary && is_core_tag(t, "binary") {
-      node = node
-    } else {
-      node = coerce_tag(t, node)
-    }
-    node = Yaml::Tagged(tag=t, value=node)
+  let (base, existing_tag, existing_anchor) = extract_node_props(value)
+  let final_tag = match tag {
+    Some(t) =>
+      match existing_tag {
+        Some(_) =>
+          raise ParseError::InvalidTagValue(tag="tag", value="<duplicate-tag>")
+        None => Some(t)
+      }
+    None => existing_tag
   }
-  if anchor is Some(a) {
-    if has_anchor(node) {
-      raise ParseError::InvalidTagValue(tag="anchor", value="<duplicate-anchor>")
+  let final_anchor = match anchor {
+    Some(a) =>
+      match existing_anchor {
+        Some(_) =>
+          raise ParseError::InvalidTagValue(tag="anchor", value="<duplicate-anchor>")
+        None => Some(a)
+      }
+    None => existing_anchor
+  }
+  let mut node = base
+  match final_tag {
+    None => ()
+    Some(t) => {
+      if !coerce_binary && is_core_tag(t, "binary") {
+        node = node
+      } else {
+        node = coerce_tag(t, node)
+      }
+      node = Yaml::Tagged(tag=t, value=node)
     }
-    node = Yaml::Anchor(name=a, value=node)
+  }
+  match final_anchor {
+    None => ()
+    Some(a) => node = Yaml::Anchor(name=a, value=node)
   }
   node
 }
 
 ///|
-fn has_anchor(value : Yaml) -> Bool {
+fn extract_node_props(
+  value : Yaml,
+) -> (Yaml, String?, String?) raise ParseError {
   match value {
-    Anchor(_) => true
-    Tagged(tag~, value~) => {
-      ignore(tag)
-      has_anchor(value)
+    Anchor(name~, value~) => {
+      let (base, tag, anchor) = extract_node_props(value)
+      if anchor is Some(_) {
+        raise ParseError::InvalidTagValue(tag="anchor", value="<duplicate-anchor>")
+      }
+      (base, tag, Some(name))
     }
-    _ => false
+    Tagged(tag~, value~) => {
+      let (base, existing_tag, anchor) = extract_node_props(value)
+      if existing_tag is Some(_) {
+        raise ParseError::InvalidTagValue(tag="tag", value="<duplicate-tag>")
+      }
+      (base, Some(tag), anchor)
+    }
+    _ => (value, None, None)
   }
 }
 
+///|
 ///|
 fn coerce_tag(tag : String, value : Yaml) -> Yaml raise ParseError {
   if is_core_tag(tag, "null") {
@@ -113,7 +145,14 @@ fn coerce_tag(tag : String, value : Yaml) -> Yaml raise ParseError {
   } else if is_core_tag(tag, "pairs") {
     validate_tagged_pairs(tag, value)
   } else if is_core_tag(tag, "str") {
-    value
+    match value {
+      String(_) => value
+      Null => Yaml::String("")
+      Bool(b) => Yaml::String(b.to_string())
+      Int(i) => Yaml::String(i.to_string())
+      Float(f) => Yaml::String(f.to_string())
+      _ => value
+    }
   } else {
     value
   }
@@ -251,6 +290,11 @@ fn read_tag(ctx : TagContext, scanner : Scanner) -> String raise ParseError {
   }
   let body = sb.to_string()
   let full = if body is "" { "!" } else { "!" + body }
+  for c in body {
+    if c is '{' || c is '}' || c is '[' || c is ']' {
+      raise ParseError::InvalidTagValue(tag="tag", value=full)
+    }
+  }
   ctx.expand(full)
 }
 

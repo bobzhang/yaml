@@ -9,18 +9,16 @@ fn parse_flow_node(
     None => {
       let (tag, anchor) = parse_node_props(ctx, scanner)
       scanner.skip_ws_and_comments()
-      let value = if tag is Some(_) {
+      if tag is Some(_) || anchor is Some(_) {
         match scanner.peek() {
-          Some('[') => parse_flow_value(ctx, scanner)
-          Some('{') => parse_flow_value(ctx, scanner)
-          Some('"') => parse_flow_value(ctx, scanner)
-          Some('\'') => parse_flow_value(ctx, scanner)
-          Some(_) => Yaml::String(parse_plain_scalar(scanner))
-          None => raise ParseError::UnexpectedEof(pos=scanner.position())
+          Some(',') | Some(']') | Some('}') | Some(':') =>
+            return apply_node_props(Yaml::Null, tag, anchor, ctx.coerce_binary)
+          None =>
+            return apply_node_props(Yaml::Null, tag, anchor, ctx.coerce_binary)
+          _ => ()
         }
-      } else {
-        parse_flow_value(ctx, scanner)
       }
+      let value = parse_flow_value(ctx, scanner)
       apply_node_props(value, tag, anchor, ctx.coerce_binary)
     }
   }
@@ -64,21 +62,36 @@ fn parse_flow_seq(ctx : TagContext, scanner : Scanner) -> Yaml raise ParseError 
   if scanner.eat(']') {
     return Yaml::Seq(items)
   }
+  let mut expect_item = true
   while true {
     scanner.skip_ws_and_comments()
-    if scanner.peek() is Some(',') {
-      ignore(scanner.advance())
-      items.push(Yaml::Null)
-      scanner.skip_ws_and_comments()
-      if scanner.eat(']') {
-        break
+    if expect_item {
+      match scanner.peek() {
+        Some(']') =>
+          raise ParseError::UnexpectedChar(
+            pos=scanner.position(),
+            found=']',
+          )
+        Some(',') =>
+          raise ParseError::UnexpectedChar(
+            pos=scanner.position(),
+            found=',',
+          )
+        Some(':') => {
+          ignore(scanner.advance())
+          scanner.skip_ws_and_comments()
+          let value =
+            if scanner.peek() is Some(',') || scanner.peek() is Some(']') {
+              Yaml::Null
+            } else {
+              parse_flow_node(ctx, scanner)
+            }
+          items.push(Yaml::Map([(Yaml::Null, value)]))
+          expect_item = false
+          continue
+        }
+        _ => ()
       }
-      continue
-    }
-    if scanner.peek() is Some(']') {
-      ignore(scanner.advance())
-      break
-    }
       let key = parse_flow_node(ctx, scanner)
       scanner.skip_ws_and_comments()
       if scanner.eat(':') {
@@ -91,16 +104,19 @@ fn parse_flow_seq(ctx : TagContext, scanner : Scanner) -> Yaml raise ParseError 
           }
         items.push(Yaml::Map([(key, value)]))
       } else {
-      items.push(key)
-    }
-    scanner.skip_ws_and_comments()
-    if scanner.eat(']') {
-      break
-    }
-    scanner.expect(',')
-    scanner.skip_ws_and_comments()
-    if scanner.eat(']') {
-      break
+        items.push(key)
+      }
+      expect_item = false
+    } else {
+      if scanner.eat(']') {
+        break
+      }
+      scanner.expect(',')
+      scanner.skip_ws_and_comments()
+      if scanner.eat(']') {
+        break
+      }
+      expect_item = true
     }
   }
   Yaml::Seq(items)
@@ -118,15 +134,34 @@ fn parse_flow_map(ctx : TagContext, scanner : Scanner) -> Yaml raise ParseError 
     if is_flow_explicit_key(scanner) {
       ignore(scanner.advance())
       scanner.skip_ws_and_comments()
-      let key = parse_flow_node(ctx, scanner)
+      let key =
+        if scanner.peek() is Some(':') ||
+          scanner.peek() is Some(',') ||
+          scanner.peek() is Some('}') {
+          Yaml::Null
+        } else {
+          parse_flow_node(ctx, scanner)
+        }
       scanner.skip_ws_and_comments()
-      scanner.expect(':')
-      scanner.skip_ws_and_comments()
-      let value = if scanner.peek() is Some(',') || scanner.peek() is Some('}') {
-        Yaml::Null
-      } else {
-        parse_flow_node(ctx, scanner)
-      }
+      let value =
+        if scanner.eat(':') {
+          scanner.skip_ws_and_comments()
+          if scanner.peek() is Some(',') || scanner.peek() is Some('}') {
+            Yaml::Null
+          } else {
+            parse_flow_node(ctx, scanner)
+          }
+        } else {
+          if key is Yaml::Null {
+            Yaml::Null
+          } else {
+            match scanner.peek() {
+              None => raise ParseError::UnexpectedEof(pos=scanner.position())
+              Some(found) =>
+                raise ParseError::UnexpectedChar(pos=scanner.position(), found~)
+            }
+          }
+        }
       items.push((key, value))
     } else if scanner.peek() is Some(':') {
       ignore(scanner.advance())

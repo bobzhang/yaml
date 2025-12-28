@@ -29,7 +29,7 @@ fn parse_document(input : String) -> Yaml raise ParseError {
   if trimmed is "" {
     return Yaml::Null
   }
-  if trimmed.has_prefix("[") || trimmed.has_prefix("{") {
+  if is_flow_document(content) {
     let scanner = Scanner::new(content)
     scanner.skip_ws_and_comments()
     let value = parse_flow_node(ctx, scanner)
@@ -51,7 +51,7 @@ fn parse_document_raw(input : String) -> Yaml raise ParseError {
   if trimmed is "" {
     return Yaml::Null
   }
-  if trimmed.has_prefix("[") || trimmed.has_prefix("{") {
+  if is_flow_document(content) {
     let scanner = Scanner::new(content)
     scanner.skip_ws_and_comments()
     let value = parse_flow_node(ctx, scanner)
@@ -91,6 +91,7 @@ fn extract_directives(
     .replace_all(old="\r", new="\n")
   let sb = StringBuilder::new()
   let mut in_directives = true
+  let mut wrote_line = false
   for line_view in normalized.split("\n") {
     let line = line_view.to_string()
     let trimmed = line.trim().to_string()
@@ -104,15 +105,18 @@ fn extract_directives(
       }
       in_directives = false
     }
+    if wrote_line {
+      sb.write_char('\n')
+    }
     sb.write_string(line)
-    sb.write_char('\n')
+    wrote_line = true
   }
   (ctx, sb.to_string())
 }
 
 ///|
 fn parse_directive(ctx : TagContext, line : String) -> Unit raise ParseError {
-  let parts = split_ws(line)
+  let parts = split_ws(strip_inline_comment(line))
   if parts.length() == 0 {
     return
   }
@@ -125,13 +129,17 @@ fn parse_directive(ctx : TagContext, line : String) -> Unit raise ParseError {
     let prefix = parts[2]
     ctx.set_handle(handle, prefix)
   } else if name is "%YAML" {
-    if parts.length() < 2 {
+    if parts.length() != 2 {
       raise ParseError::InvalidDirective(
         detail="YAML directive expects version",
       )
     }
+    if ctx.seen_yaml {
+      raise ParseError::InvalidDirective(detail="duplicate YAML directive")
+    }
+    ctx.seen_yaml = true
     let version = parts[1]
-    if version != "1.2" {
+    if !version.has_prefix("1.") {
       raise ParseError::InvalidDirective(detail="unsupported YAML version")
     }
   } else {
@@ -164,53 +172,133 @@ fn split_ws(line : String) -> Array[String] {
 }
 
 ///|
-fn split_documents(input : String) -> Array[String] {
+fn split_documents(input : String) -> Array[String] raise ParseError {
   let normalized = input
     .replace_all(old="\r\n", new="\n")
     .replace_all(old="\r", new="\n")
   let docs : Array[String] = []
   let sb = StringBuilder::new()
-  let mut has_content = false
-  let mut pending_doc = false
+  let mut in_doc = false
+  let mut in_directives = false
+  let mut saw_directive = false
+  let mut explicit_start = false
+  let mut content_seen = false
+  let mut wrote_line = false
+  fn append_line(line : String) -> Unit {
+    if wrote_line {
+      sb.write_char('\n')
+    }
+    sb.write_string(line)
+    wrote_line = true
+  }
+  fn validate_directives(
+    saw_directive : Bool,
+    explicit_start : Bool,
+    content_seen : Bool,
+  ) -> Unit raise ParseError {
+    if saw_directive && !explicit_start {
+      if content_seen {
+        raise ParseError::InvalidDirective(
+          detail="directive without document start",
+        )
+      } else {
+        raise ParseError::InvalidDirective(
+          detail="directive without document",
+        )
+      }
+    }
+  }
   for line_view in normalized.split("\n") {
     let line = line_view.to_string()
     match doc_start_rest(line) {
       Some(rest) => {
-        if pending_doc || has_content {
-          docs.push(sb.to_string())
-          sb.reset()
-        }
-        has_content = false
-        pending_doc = true
-        if rest != "" {
-          if !sb.is_empty() {
-            sb.write_char('\n')
+        if in_doc {
+          if !(in_directives && !content_seen) {
+            validate_directives(saw_directive, explicit_start, content_seen)
+            docs.push(sb.to_string())
+            sb.reset()
+            wrote_line = false
+            saw_directive = false
           }
-          sb.write_string(rest)
-          has_content = true
+        }
+        in_doc = true
+        in_directives = false
+        explicit_start = true
+        content_seen = false
+        if rest != "" {
+          append_line(rest)
+          if !is_non_content_line(rest) {
+            content_seen = true
+          }
         }
         continue
       }
       None => ()
     }
     if is_doc_end_marker(line) {
-      if pending_doc || has_content {
+      if in_doc || wrote_line {
+        validate_directives(saw_directive, explicit_start, content_seen)
         docs.push(sb.to_string())
         sb.reset()
+        wrote_line = false
       }
-      has_content = false
-      pending_doc = false
+      in_doc = false
+      in_directives = false
+      saw_directive = false
+      explicit_start = false
+      content_seen = false
       continue
     }
-    if !sb.is_empty() {
-      sb.write_char('\n')
+    let trimmed = line.trim().to_string()
+    if !in_doc {
+      if trimmed is "" || trimmed.has_prefix("#") {
+        continue
+      }
+      if trimmed.has_prefix("%") {
+        in_doc = true
+        in_directives = true
+        saw_directive = true
+        append_line(line)
+        continue
+      }
+      in_doc = true
+      in_directives = false
+      explicit_start = false
+      if !is_non_content_line(line) {
+        content_seen = true
+      }
+      append_line(line)
+      continue
     }
-    sb.write_string(line)
-    if !has_content && !is_non_content_line(line) {
-      has_content = true
+    if in_directives {
+      if trimmed is "" || trimmed.has_prefix("#") {
+        continue
+      }
+      if trimmed.has_prefix("%") {
+        saw_directive = true
+        append_line(line)
+        continue
+      }
+      validate_directives(saw_directive, explicit_start, content_seen)
+      in_directives = false
+      if !is_non_content_line(line) {
+        content_seen = true
+      }
+      append_line(line)
+      continue
     }
+    if trimmed.has_prefix("%YAML") || trimmed.has_prefix("%TAG") {
+      raise ParseError::InvalidDirective(
+        detail="directive not at document start",
+      )
+    }
+    if !is_non_content_line(line) {
+      content_seen = true
+    }
+    append_line(line)
   }
-  if pending_doc || has_content || docs.length() == 0 {
+  if in_doc || wrote_line {
+    validate_directives(saw_directive, explicit_start, content_seen)
     docs.push(sb.to_string())
   }
   docs
@@ -241,6 +329,64 @@ fn doc_start_rest(line : String) -> String? {
   } else {
     None
   }
+}
+
+///|
+fn is_flow_document(text : String) -> Bool {
+  let trimmed = text.trim_start().to_string()
+  if !(trimmed.has_prefix("[") || trimmed.has_prefix("{")) {
+    return false
+  }
+  let chars = trimmed.to_array()
+  let mut depth = 0
+  let mut in_single = false
+  let mut in_double = false
+  let mut i = 0
+  while i < chars.length() {
+    let c = chars[i]
+    if in_double {
+      if c is '\\' && i + 1 < chars.length() {
+        i = i + 2
+        continue
+      }
+      if c is '"' {
+        in_double = false
+      }
+      i = i + 1
+      continue
+    }
+    if in_single {
+      if c is '\'' {
+        in_single = false
+      }
+      i = i + 1
+      continue
+    }
+    if c is '"' {
+      in_double = true
+      i = i + 1
+      continue
+    }
+    if c is '\'' {
+      in_single = true
+      i = i + 1
+      continue
+    }
+    if c is '[' || c is '{' {
+      depth = depth + 1
+    } else if c is ']' || c is '}' {
+      if depth > 0 {
+        depth = depth - 1
+      }
+      if depth == 0 {
+        let rest = trimmed.view(start_offset=i + 1).to_string()
+        let rest_trimmed = strip_inline_comment(rest).trim().to_string()
+        return rest_trimmed is ""
+      }
+    }
+    i = i + 1
+  }
+  false
 }
 
 ///|

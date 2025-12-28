@@ -105,6 +105,9 @@ fn parse_plain_scalar(scanner : Scanner) -> String raise ParseError {
     sb.write_char(c)
     prev_space = c.is_whitespace()
   }
+  if scanner.peek() is Some('#') && prev_space {
+    scanner.skip_comment()
+  }
   if lines.length() == 0 {
     let raw = sb.to_string().trim_end().to_string()
     if raw is "" {
@@ -212,12 +215,7 @@ fn fold_quoted_lines(lines : Array[String]) -> String {
       i = j
       continue
     }
-    let mut text = line
-    if i + 1 < end && lines[i + 1] is "" {
-      text = trim_end_spaces(text)
-    } else if i + 1 == end && trailing_newlines > 0 {
-      text = trim_end_spaces(text)
-    }
+    let text = trim_end_spaces(line)
     sb.write_string(text)
     last_ended_space = ends_with_space(text)
     if i + 1 < end &&
@@ -242,7 +240,11 @@ fn fold_quoted_lines(lines : Array[String]) -> String {
 fn trim_end_spaces(text : String) -> String {
   let chars = text.to_array()
   let mut end = chars.length()
-  while end > 0 && (chars[end - 1] is ' ' || chars[end - 1] is '\t') {
+  while end > 0 {
+    let c = chars[end - 1]
+    if !(c is ' ') {
+      break
+    }
     end = end - 1
   }
   if end == chars.length() {
@@ -262,7 +264,7 @@ fn ends_with_space(text : String) -> Bool {
     return false
   }
   let last = chars[chars.length() - 1]
-  last is ' ' || last is '\t'
+  last is ' '
 }
 
 ///|
@@ -313,13 +315,11 @@ fn skip_flow_plain_line(
         match scanner.peek() {
           Some('\n') => {
             ignore(scanner.advance())
-            lines.push("")
-            continue
+            return false
           }
           Some('\r') => {
             ignore(scanner.advance())
-            lines.push("")
-            continue
+            return false
           }
           None => return false
           Some(_) => return false

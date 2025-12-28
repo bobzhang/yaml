@@ -106,7 +106,14 @@ fn Scanner::skip_ws_and_comments(self : Scanner) -> Unit {
     progressed = false
     let before = self.pos
     self.skip_ws()
-    self.skip_comment()
+    let skipped_ws = self.pos != before
+    if skipped_ws || self.column == 1 {
+      let before_comment = self.pos
+      self.skip_comment()
+      if self.pos != before_comment {
+        progressed = true
+      }
+    }
     if self.pos != before {
       progressed = true
     }
