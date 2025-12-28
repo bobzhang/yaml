@@ -180,6 +180,38 @@ test "reject invalid omap tag" {
 }
 
 ///|
+test "parse map and seq tags" {
+  assert_eq(
+    parse_yaml("!!map {a: 1}"),
+    Yaml::Tagged(
+      tag="tag:yaml.org,2002:map",
+      value=Yaml::Map([(Yaml::String("a"), Yaml::Int(1))]),
+    ),
+  )
+  assert_eq(
+    parse_yaml("!!seq [1, 2]"),
+    Yaml::Tagged(
+      tag="tag:yaml.org,2002:seq",
+      value=Yaml::Seq([Yaml::Int(1), Yaml::Int(2)]),
+    ),
+  )
+}
+
+///|
+test "reject invalid map and seq tags" {
+  let map_input = "!!map [1]"
+  let map_result : Result[Yaml, ParseError] = try? parse_yaml(map_input)
+  guard map_result is Err(ParseError::InvalidTagValue(_)) else {
+    fail("expected invalid tag value error")
+  }
+  let seq_input = "!!seq {a: 1}"
+  let seq_result : Result[Yaml, ParseError] = try? parse_yaml(seq_input)
+  guard seq_result is Err(ParseError::InvalidTagValue(_)) else {
+    fail("expected invalid tag value error")
+  }
+}
+
+///|
 test "parse core tagged scalars" {
   assert_eq(
     parse_yaml("!!str 3"),
