@@ -63,14 +63,15 @@ fn Scanner::expect(self : Scanner, ch : Char) -> Unit raise ParseError {
   if !self.eat(ch) {
     match self.peek() {
       None => raise ParseError::UnexpectedEof(pos=self.position())
-      Some(found) => raise ParseError::UnexpectedChar(pos=self.position(), found=found)
+      Some(found) =>
+        raise ParseError::UnexpectedChar(pos=self.position(), found~)
     }
   }
 }
 
 ///|
 fn Scanner::skip_ws(self : Scanner) -> Unit {
-  while self.peek() is Some(c) && (c.is_whitespace()) {
+  while self.peek() is Some(c) && c.is_whitespace() {
     ignore(self.advance())
   }
 }

@@ -1,6 +1,13 @@
 ///|
 fn is_plain_break(c : Char) -> Bool {
-  c.is_whitespace() || c is ',' || c is ':' || c is '[' || c is ']' || c is '{' || c is '}' || c is '#'
+  c.is_whitespace() ||
+  c is ',' ||
+  c is ':' ||
+  c is '[' ||
+  c is ']' ||
+  c is '{' ||
+  c is '}' ||
+  c is '#'
 }
 
 ///|
@@ -65,7 +72,8 @@ fn parse_plain_scalar(scanner : Scanner) -> String raise ParseError {
   if raw is "" {
     match scanner.peek() {
       None => raise ParseError::UnexpectedEof(pos=scanner.position())
-      Some(c) => raise ParseError::UnexpectedChar(pos=scanner.position(), found=c)
+      Some(c) =>
+        raise ParseError::UnexpectedChar(pos=scanner.position(), found=c)
     }
   }
   raw
@@ -100,7 +108,11 @@ fn parse_escape(scanner : Scanner) -> Char raise ParseError {
       let code = read_hex(scanner, 8)
       char_from_code(code, scanner)
     }
-    Some(other) => raise ParseError::InvalidEscape(pos=scanner.position(), value=other.to_string())
+    Some(other) =>
+      raise ParseError::InvalidEscape(
+        pos=scanner.position(),
+        value=other.to_string(),
+      )
   }
 }
 
@@ -110,12 +122,15 @@ fn read_hex(scanner : Scanner, digits : Int) -> Int raise ParseError {
   for _ in 0..<digits {
     match scanner.advance() {
       None => raise ParseError::UnexpectedEof(pos=scanner.position())
-      Some(c) => {
+      Some(c) =>
         match hex_value(c) {
-          None => raise ParseError::InvalidEscape(pos=scanner.position(), value=c.to_string())
+          None =>
+            raise ParseError::InvalidEscape(
+              pos=scanner.position(),
+              value=c.to_string(),
+            )
           Some(v) => value = value * 16 + v
         }
-      }
     }
   }
   value
@@ -138,7 +153,11 @@ fn hex_value(c : Char) -> Int? {
 fn char_from_code(code : Int, scanner : Scanner) -> Char raise ParseError {
   match code.to_char() {
     Some(c) => c
-    None => raise ParseError::InvalidEscape(pos=scanner.position(), value=code.to_string())
+    None =>
+      raise ParseError::InvalidEscape(
+        pos=scanner.position(),
+        value=code.to_string(),
+      )
   }
 }
 
