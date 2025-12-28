@@ -356,6 +356,15 @@ fn parse_inline_node_multiline(
   allow_same_indent_props : Bool,
 ) -> (Yaml, Int) raise ParseError {
   let trimmed = text.trim().to_string()
+  let mut inline_comment = false
+  if line_index < lines.length() {
+    let raw_line =
+      lines[line_index].raw.view(start_offset=lines[line_index].indent).to_string()
+    let stripped = strip_inline_comment(raw_line)
+    if stripped.length() < raw_line.length() {
+      inline_comment = true
+    }
+  }
   if trimmed is "" {
     return (Yaml::Null, line_index + 1)
   }
@@ -381,19 +390,25 @@ fn parse_inline_node_multiline(
         let value = parse_flow_value_from_string(ctx, rest)
         (apply_node_props(value, tag, anchor, ctx.coerce_binary), line_index + 1)
       } else if is_plain_scalar_start(rest) {
-        let (parts, next) =
-          collect_plain_continuation(lines, line_index + 1, indent, allow_same_indent_props)
-        let joined = if parts.length() > 0 {
-          fold_plain_lines(rest, parts)
-        } else {
-          rest
-        }
-        let value = parse_scalar_value(joined)
-        let node = apply_node_props(value, tag, anchor, ctx.coerce_binary)
-        if parts.length() > 0 {
-          (node, next)
-        } else {
+        if inline_comment {
+          let value = parse_scalar_value(rest)
+          let node = apply_node_props(value, tag, anchor, ctx.coerce_binary)
           (node, line_index + 1)
+        } else {
+          let (parts, next) =
+            collect_plain_continuation(lines, line_index + 1, indent, allow_same_indent_props)
+          let joined = if parts.length() > 0 {
+            fold_plain_lines(rest, parts)
+          } else {
+            rest
+          }
+          let value = parse_scalar_value(joined)
+          let node = apply_node_props(value, tag, anchor, ctx.coerce_binary)
+          if parts.length() > 0 {
+            (node, next)
+          } else {
+            (node, line_index + 1)
+          }
         }
       } else {
         let value = parse_scalar_value(rest)
@@ -427,6 +442,12 @@ fn parse_value_from_text(
       lines[line_index].raw.view(start_offset=lines[line_index].indent).to_string()
     } else {
       value_text
+    }
+  let base_indent =
+    if value_text == block_content(lines[line_index]) {
+      indent - 1
+    } else {
+      indent
     }
   let trimmed_value = value_text.trim_start().to_string()
   let raw_trimmed = raw_value.trim_start().to_string()
@@ -495,12 +516,6 @@ fn parse_value_from_text(
       let (value, next) = parse_block_seq(ctx, temp, 0, indent + 2)
       return (value, line_index + next)
     }
-    let base_indent =
-      if value_text == lines[line_index].content {
-        indent - 1
-      } else {
-        indent
-      }
     if raw_trimmed.has_prefix("\"") && !is_terminated_double(raw_trimmed) {
       let (combined, next) =
         collect_quoted_multiline(
@@ -544,7 +559,13 @@ fn parse_value_from_text(
       None => ()
     }
     match
-      try_parse_block_scalar(ctx, trimmed_value, lines, line_index + 1, indent) {
+      try_parse_block_scalar(
+        ctx,
+        trimmed_value,
+        lines,
+        line_index + 1,
+        base_indent,
+      ) {
       Some((node, next)) => (node, next)
       None => {
         parse_inline_node_multiline(
@@ -1097,7 +1118,13 @@ fn collect_plain_continuation(
         column: line.indent + 1,
       })
     }
-    parts.push(text.trim_end().to_string())
+    let stripped = strip_inline_comment(text)
+    let trimmed = stripped.trim_end().to_string()
+    parts.push(trimmed)
+    if stripped.length() < text.length() {
+      i = i + 1
+      break
+    }
     i = i + 1
   }
   (parts, i)
