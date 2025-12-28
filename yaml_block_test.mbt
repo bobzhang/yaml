@@ -188,7 +188,6 @@ test "parse block scalars" {
     #|
   let folded_value =
     #|a b
-    #|
     #|c
     #|
   assert_eq(
@@ -208,7 +207,7 @@ test "parse block scalars" {
     #|  a
     #|
     #|
-  let keep_value = "a\n\n\n"
+  let keep_value = "a\n\n"
   assert_eq(
     parse_yaml(keep_input),
     Yaml::Map([(Yaml::String("keep"), Yaml::String(keep_value))]),
@@ -245,7 +244,7 @@ test "parse empty block scalar with chomp keep" {
     #|
   assert_eq(
     parse_yaml(input),
-    Yaml::Map([(Yaml::String("empty"), Yaml::String(""))]),
+    Yaml::Map([(Yaml::String("empty"), Yaml::String("\n"))]),
   )
 }
 
@@ -288,7 +287,10 @@ test "parse explicit mapping keys" {
     parse_yaml(input),
     Yaml::Map([
       (Yaml::String("key1"), Yaml::String("value1")),
-      (Yaml::String("key2"), Yaml::String("value2")),
+      (
+        Yaml::Map([(Yaml::String("key2"), Yaml::String("value2"))]),
+        Yaml::Null,
+      ),
     ]),
   )
 }

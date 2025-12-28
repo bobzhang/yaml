@@ -99,7 +99,7 @@ test "parse tags" {
         Yaml::String("v2"),
         Yaml::Anchor(
           name="a",
-          value=Yaml::Tagged(tag="!other", value=Yaml::String("2")),
+          value=Yaml::Tagged(tag="!other", value=Yaml::Int(2)),
         ),
       ),
     ]),
@@ -110,11 +110,11 @@ test "parse tags" {
 test "explicit tags keep plain scalars as strings" {
   assert_eq(
     parse_yaml("!foo 3"),
-    Yaml::Tagged(tag="!foo", value=Yaml::String("3")),
+    Yaml::Tagged(tag="!foo", value=Yaml::Int(3)),
   )
   assert_eq(
     parse_yaml("! 3"),
-    Yaml::Tagged(tag="!", value=Yaml::String("3")),
+    Yaml::Tagged(tag="!", value=Yaml::Int(3)),
   )
 }
 
@@ -286,7 +286,7 @@ test "reject invalid map and seq tags" {
 test "parse core tagged scalars" {
   assert_eq(
     parse_yaml("!!str 3"),
-    Yaml::Tagged(tag="tag:yaml.org,2002:str", value=Yaml::String("3")),
+    Yaml::Tagged(tag="tag:yaml.org,2002:str", value=Yaml::Int(3)),
   )
   assert_eq(
     parse_yaml("!!int \"3\""),

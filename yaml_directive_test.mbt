@@ -33,7 +33,7 @@ test "yaml directive" {
 ///|
 test "reject unsupported yaml version" {
   let input =
-    #|%YAML 1.1
+    #|%YAML 2.0
     #|---
     #|true
     #|

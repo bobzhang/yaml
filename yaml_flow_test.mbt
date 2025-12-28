@@ -5,7 +5,7 @@ test "parse flow scalars" {
   assert_eq(parse_yaml("true"), Yaml::Bool(true))
   assert_eq(parse_yaml("false"), Yaml::Bool(false))
   assert_eq(parse_yaml("42"), Yaml::Int(42))
-  assert_eq(parse_yaml("3.5"), Yaml::Float(Float::from_double(3.5)))
+  assert_eq(parse_yaml("3.5"), Yaml::Float(3.5))
   assert_eq(parse_yaml("1_000"), Yaml::Int(1000))
   assert_eq(parse_yaml("0x10"), Yaml::Int(16))
   assert_eq(parse_yaml("0o10"), Yaml::Int(8))
