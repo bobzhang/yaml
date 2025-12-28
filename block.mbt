@@ -2,6 +2,7 @@
 priv struct Line {
   number : Int
   indent : Int
+  has_tab_indent : Bool
   raw : String
   content : String
 }
@@ -54,6 +55,12 @@ fn parse_block_node(
     raise ParseError::UnexpectedEof(pos~)
   }
   let line = lines[start]
+  if line.has_tab_indent {
+    raise ParseError::InvalidIndent(pos={
+      line: line.number,
+      column: line.indent + 1,
+    })
+  }
   if line.indent < indent {
     raise ParseError::InvalidIndent(pos={
       line: line.number,
@@ -100,6 +107,12 @@ fn parse_block_seq(
       break
     }
     let line = lines[i]
+    if line.has_tab_indent {
+      raise ParseError::InvalidIndent(pos={
+        line: line.number,
+        column: line.indent + 1,
+      })
+    }
     if line.indent < indent {
       break
     }
@@ -134,6 +147,7 @@ fn parse_block_seq(
             let virtual_line = {
               number: line.number,
               indent: indent + 2,
+              has_tab_indent: false,
               raw: rest,
               content: rest,
             }
@@ -148,6 +162,7 @@ fn parse_block_seq(
             let virtual_line = {
               number: line.number,
               indent: indent + 2,
+              has_tab_indent: false,
               raw: rest,
               content: rest,
             }
@@ -185,6 +200,12 @@ fn parse_block_map(
       break
     }
     let line = lines[i]
+    if line.has_tab_indent {
+      raise ParseError::InvalidIndent(pos={
+        line: line.number,
+        column: line.indent + 1,
+      })
+    }
     if line.indent < indent {
       break
     }
@@ -1009,7 +1030,7 @@ fn split_key_value_opt(content : String) -> (String, String)? {
 }
 
 ///|
-fn collect_lines(input : String) -> Array[Line] raise ParseError {
+fn collect_lines(input : String) -> Array[Line] {
   let normalized = input
     .replace_all(old="\r\n", new="\n")
     .replace_all(old="\r", new="\n")
@@ -1018,13 +1039,15 @@ fn collect_lines(input : String) -> Array[Line] raise ParseError {
   for line_view in normalized.split("\n") {
     let line = line_view.to_string()
     let mut indent = 0
+    let mut has_tab_indent = false
     let chars = line.to_array()
     while indent < chars.length() {
       let c = chars[indent]
       if c is ' ' {
         indent = indent + 1
       } else if c is '\t' {
-        raise ParseError::InvalidIndent(pos={ line: number, column: indent + 1 })
+        has_tab_indent = true
+        break
       } else {
         break
       }
@@ -1032,7 +1055,13 @@ fn collect_lines(input : String) -> Array[Line] raise ParseError {
     let content = line.view(start_offset=indent).to_string()
     let stripped = strip_inline_comment(content)
     let trimmed = stripped.trim_end().to_string()
-    lines.push({ number, indent, raw: line, content: trimmed })
+    lines.push({
+      number,
+      indent,
+      has_tab_indent,
+      raw: line,
+      content: trimmed,
+    })
     number = number + 1
   }
   lines

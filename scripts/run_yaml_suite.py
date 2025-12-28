@@ -279,31 +279,42 @@ def parse_event_line(line):
         style = ":"
         value = ""
         if rest:
-            parts = rest.split()
-            idx = 0
-            while idx < len(parts):
-                token = parts[idx]
-                if token in ("[]", "{}"):
-                    idx += 1
+            i = 0
+            n = len(rest)
+            while i < n:
+                while i < n and rest[i].isspace():
+                    i += 1
+                if i >= n:
+                    break
+                if rest.startswith("[]", i) or rest.startswith("{}", i):
+                    i += 2
                     continue
-                if token.startswith("&"):
-                    anchor = token[1:]
-                    idx += 1
+                if rest[i] == "&":
+                    i += 1
+                    start = i
+                    while i < n and not rest[i].isspace():
+                        i += 1
+                    anchor = rest[start:i]
                     continue
-                if token.startswith("<") and token.endswith(">"):
-                    tag = token[1:-1]
-                    idx += 1
+                if rest[i] == "<":
+                    i += 1
+                    start = i
+                    while i < n and rest[i] != ">":
+                        i += 1
+                    tag = rest[start:i]
+                    if i < n and rest[i] == ">":
+                        i += 1
                     continue
-                if token.startswith("!") and len(token) > 0:
-                    tag = token
-                    idx += 1
+                if rest[i] == "!":
+                    start = i
+                    i += 1
+                    while i < n and not rest[i].isspace():
+                        i += 1
+                    tag = rest[start:i]
                     continue
+                style = rest[i]
+                value = rest[i + 1:]
                 break
-            if idx < len(parts):
-                remaining = " ".join(parts[idx:])
-                if remaining:
-                    style = remaining[0]
-                    value = remaining[1:]
         return ("scalar", anchor, tag, style, value)
     if line.startswith("=ALI"):
         rest = line[4:].strip()

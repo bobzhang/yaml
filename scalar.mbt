@@ -210,6 +210,7 @@ fn parse_escape(scanner : Scanner) -> Char raise ParseError {
     Some('a') => '\u{0007}'
     Some('b') => '\u{0008}'
     Some('t') => '\t'
+    Some('\t') => '\t'
     Some('n') => '\n'
     Some('v') => '\u{000b}'
     Some('f') => '\u{000c}'

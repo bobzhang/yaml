@@ -115,3 +115,11 @@ test "parse flow comments" {
     Yaml::Map([(Yaml::String("a"), Yaml::Int(1))]),
   )
 }
+
+///|
+test "parse double-quoted leading tabs" {
+  let escaped = "\"2 leading\n    \\\t" + "tab\""
+  assert_eq(parse_yaml(escaped), Yaml::String("2 leading \ttab"))
+  let literal = "\"3 leading\n    \t" + "tab\""
+  assert_eq(parse_yaml(literal), Yaml::String("3 leading tab"))
+}
