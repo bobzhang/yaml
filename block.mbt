@@ -143,7 +143,7 @@ fn parse_block_seq(
           i = next
         }
         None =>
-          if rest is "-" || rest.has_prefix("- ") {
+          if rest is "-" || rest.has_prefix("- ") || rest.has_prefix("-\t") {
             let virtual_line = {
               number: line.number,
               indent: indent + 2,
@@ -220,7 +220,7 @@ fn parse_block_map(
       let (key_text, value_text) = split_key_value(line)
       let key = parse_inline_key(ctx, key_text)
       let trimmed_value = value_text.trim_start().to_string()
-      if trimmed_value.has_prefix("- ") {
+      if trimmed_value.has_prefix("- ") || trimmed_value.has_prefix("-\t") {
         raise ParseError::InvalidIndent(pos={
           line: line.number,
           column: line.indent + 1,
@@ -314,7 +314,9 @@ fn parse_value_from_text(
       (Yaml::Null, next_index)
     }
   } else {
-    if trimmed_value is "-" || trimmed_value.has_prefix("- ") {
+    if trimmed_value is "-" ||
+      trimmed_value.has_prefix("- ") ||
+      trimmed_value.has_prefix("-\t") {
       let virtual_line = {
         number: lines[line_index].number,
         indent: indent + 2,
@@ -340,6 +342,10 @@ fn parse_value_from_text(
       return (parse_inline_value(ctx, combined), next)
     }
     match try_parse_quoted_props(ctx, trimmed_value, lines, line_index) {
+      Some((node, next)) => return (node, next)
+      None => ()
+    }
+    match try_parse_flow_multiline(ctx, trimmed_value, lines, line_index) {
       Some((node, next)) => return (node, next)
       None => ()
     }
@@ -470,6 +476,118 @@ fn try_parse_quoted_props(
 }
 
 ///|
+fn try_parse_flow_multiline(
+  ctx : TagContext,
+  text : String,
+  lines : Array[Line],
+  line_index : Int,
+) -> (Yaml, Int)? raise ParseError {
+  let scanner = Scanner::new(text)
+  scanner.skip_ws_and_comments()
+  if parse_alias(scanner) is Some(_) {
+    return None
+  }
+  let (tag, anchor) = parse_node_props(ctx, scanner)
+  scanner.skip_ws_and_comments()
+  let rest = text
+    .view(start_offset=scanner.offset())
+    .to_string()
+    .trim_start()
+    .to_string()
+  if rest.has_prefix("[") || rest.has_prefix("{") {
+    let (combined, next) = collect_flow_multiline(lines, line_index, rest)
+    let value = parse_flow_value_from_string(ctx, combined)
+    return Some((apply_node_props(value, tag, anchor, ctx.coerce_binary), next))
+  }
+  None
+}
+
+///|
+fn collect_flow_multiline(
+  lines : Array[Line],
+  index : Int,
+  first : String,
+) -> (String, Int) {
+  let sb = StringBuilder::new()
+  sb.write_string(first)
+  let mut depth = 0
+  let mut in_single = false
+  let mut in_double = false
+  let (next_depth, next_single, next_double) =
+    scan_flow_depth(first, depth, in_single, in_double)
+  depth = next_depth
+  in_single = next_single
+  in_double = next_double
+  let mut i = index + 1
+  while depth > 0 && i < lines.length() {
+    sb.write_char('\n')
+    let line_text = lines[i].content
+    sb.write_string(line_text)
+    let (next_depth, next_single, next_double) =
+      scan_flow_depth(line_text, depth, in_single, in_double)
+    depth = next_depth
+    in_single = next_single
+    in_double = next_double
+    i = i + 1
+  }
+  (sb.to_string(), i)
+}
+
+///|
+fn scan_flow_depth(
+  text : String,
+  depth : Int,
+  in_single : Bool,
+  in_double : Bool,
+) -> (Int, Bool, Bool) {
+  let mut d = depth
+  let mut single = in_single
+  let mut double = in_double
+  let chars = text.to_array()
+  let mut i = 0
+  while i < chars.length() {
+    let c = chars[i]
+    if double {
+      if c is '\\' && i + 1 < chars.length() {
+        i = i + 2
+        continue
+      }
+      if c is '"' {
+        double = false
+      }
+      i = i + 1
+      continue
+    }
+    if single {
+      if c is '\'' {
+        single = false
+      }
+      i = i + 1
+      continue
+    }
+    if c is '"' {
+      double = true
+      i = i + 1
+      continue
+    }
+    if c is '\'' {
+      single = true
+      i = i + 1
+      continue
+    }
+    if c is '[' || c is '{' {
+      d = d + 1
+    } else if c is ']' || c is '}' {
+      if d > 0 {
+        d = d - 1
+      }
+    }
+    i = i + 1
+  }
+  (d, single, double)
+}
+
+///|
 fn collect_quoted_multiline(
   lines : Array[Line],
   index : Int,
@@ -566,7 +684,7 @@ fn parse_explicit_entry(
     .to_string()
   if rest is "" {
     let next_index = next_non_empty(lines, index + 1)
-    if next_index >= lines.length() || lines[next_index].indent <= indent {
+    if next_index >= lines.length() || lines[next_index].indent < indent {
       raise ParseError::InvalidIndent(pos={
         line: line.number,
         column: line.indent + 1,
@@ -836,10 +954,30 @@ fn parse_block_scalar(
   let mut max_blank_indent : Int? = None
   while i < lines.length() {
     let line = lines[i]
+    if i == lines.length() - 1 && line.raw is "" {
+      break
+    }
     let raw_content = line.raw.view(start_offset=line.indent).to_string()
-    if raw_content.trim() is "" {
-      if content_indent is None && line.indent <= parent_indent {
-        break
+    let mut treat_as_blank = raw_content.trim() is ""
+    match content_indent {
+      Some(indent) =>
+        if line.indent > indent {
+          treat_as_blank = false
+        }
+      None => ()
+    }
+    if treat_as_blank {
+      if line.indent <= parent_indent {
+        let next_index = next_non_empty(lines, i + 1)
+        if next_index >= lines.length() ||
+          lines[next_index].indent <= parent_indent {
+          if chomp is Chomp::Keep && content_indent is Some(_) {
+            pending_blank = pending_blank + 1
+            i = i + 1
+            continue
+          }
+          break
+        }
       }
       if content_indent is None && line.indent > parent_indent {
         match max_blank_indent {
@@ -935,20 +1073,26 @@ fn fold_lines(lines : Array[String]) -> String {
 fn fold_block_lines(lines : Array[String]) -> String {
   let sb = StringBuilder::new()
   let mut prev_blank = false
+  let mut prev_more = false
   for idx in 0..<lines.length() {
     let line = lines[idx]
     let is_blank = line is ""
+    let is_more = !is_blank &&
+      (line.has_prefix(" ") || line.has_prefix("\t"))
     if idx == 0 {
       if is_blank {
         sb.write_char('\n')
       }
     } else if is_blank {
       sb.write_char('\n')
-    } else if !prev_blank {
+    } else if prev_blank || prev_more || is_more {
+      sb.write_char('\n')
+    } else {
       sb.write_char(' ')
     }
     sb.write_string(line)
     prev_blank = is_blank
+    prev_more = is_more
   }
   sb.to_string()
 }
@@ -991,7 +1135,9 @@ fn is_seq_line(line : Line, indent : Int) -> Bool {
   if line.indent != indent {
     return false
   }
-  line.content is "-" || line.content.has_prefix("- ")
+  line.content is "-" ||
+  line.content.has_prefix("- ") ||
+  line.content.has_prefix("-\t")
 }
 
 ///|
@@ -1019,7 +1165,9 @@ fn is_explicit_key_line(line : Line, indent : Int) -> Bool {
   if line.indent != indent {
     return false
   }
-  line.content is "?" || line.content.has_prefix("? ")
+  line.content is "?" ||
+  line.content.has_prefix("? ") ||
+  line.content.has_prefix("?\t")
 }
 
 ///|
@@ -1027,7 +1175,9 @@ fn is_value_line(line : Line, indent : Int) -> Bool {
   if line.indent != indent {
     return false
   }
-  line.content is ":" || line.content.has_prefix(": ")
+  line.content is ":" ||
+  line.content.has_prefix(": ") ||
+  line.content.has_prefix(":\t")
 }
 
 ///|

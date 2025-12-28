@@ -188,6 +188,7 @@ test "parse block scalars" {
     #|
   let folded_value =
     #|a b
+    #|
     #|c
     #|
   assert_eq(
@@ -207,13 +208,7 @@ test "parse block scalars" {
     #|  a
     #|
     #|
-  let keep_value =
-    #|a
-    #|
-    #|
-    #|
-    #|
-    #|
+  let keep_value = "a\n\n\n"
   assert_eq(
     parse_yaml(keep_input),
     Yaml::Map([(Yaml::String("keep"), Yaml::String(keep_value))]),
@@ -231,6 +226,16 @@ test "parse block scalars" {
     parse_yaml(indent_input),
     Yaml::Map([(Yaml::String("indented"), Yaml::String(indent_value))]),
   )
+}
+
+///|
+test "parse multiline quoted scalars" {
+  let folded_input = "\"\n  foo\n\"\n"
+  assert_eq(parse_yaml(folded_input), Yaml::String(" foo "))
+  let empty_space = "'\n  '\n"
+  assert_eq(parse_yaml(empty_space), Yaml::String(" "))
+  let empty_line = "'\n\n  '\n"
+  assert_eq(parse_yaml(empty_line), Yaml::String("\n"))
 }
 
 ///|

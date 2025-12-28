@@ -9,7 +9,7 @@ fn parse_double_quoted(scanner : Scanner) -> String raise ParseError {
       Some('"') => {
         ignore(scanner.advance())
         lines.push(sb.to_string())
-        return fold_lines(lines)
+        return fold_quoted_lines(lines)
       }
       Some('\\') => {
         ignore(scanner.advance())
@@ -56,7 +56,7 @@ fn parse_single_quoted(scanner : Scanner) -> String raise ParseError {
           sb.write_char('\'')
         } else {
           lines.push(sb.to_string())
-          return fold_lines(lines)
+          return fold_quoted_lines(lines)
         }
       }
       Some('\n') => {
@@ -129,6 +129,140 @@ fn parse_plain_scalar(scanner : Scanner) -> String raise ParseError {
     }
     folded
   }
+}
+
+///|
+fn fold_quoted_lines(lines : Array[String]) -> String {
+  if lines.length() == 0 {
+    return ""
+  }
+  let mut all_empty = true
+  for line in lines {
+    if !(line is "") {
+      all_empty = false
+      break
+    }
+  }
+  if all_empty {
+    if lines.length() == 2 {
+      return " "
+    }
+    let mut count = lines.length() - 2
+    if count < 0 {
+      count = 0
+    }
+    let sb = StringBuilder::new()
+    for _ in 0..<count {
+      sb.write_char('\n')
+    }
+    return sb.to_string()
+  }
+  let mut trailing = 0
+  while trailing < lines.length() &&
+        lines[lines.length() - 1 - trailing] is "" {
+    trailing = trailing + 1
+  }
+  let end = lines.length() - trailing
+  let mut trailing_space = false
+  let mut trailing_newlines = 0
+  if trailing > 0 {
+    let mut has_content = false
+    for i in 0..<end {
+      if !(lines[i] is "") {
+        has_content = true
+        break
+      }
+    }
+    if has_content {
+      if trailing == 1 {
+        trailing_space = true
+      } else {
+        trailing_newlines = trailing - 1
+      }
+    }
+  }
+  let sb = StringBuilder::new()
+  let mut last_ended_space = false
+  let mut i = 0
+  if i < end && lines[i] is "" {
+    let mut has_content = false
+    for j in (i + 1)..<end {
+      if !(lines[j] is "") {
+        has_content = true
+        break
+      }
+    }
+    if has_content {
+      sb.write_char(' ')
+      last_ended_space = true
+    }
+    i = i + 1
+  }
+  while i < end {
+    let line = lines[i]
+    if line is "" {
+      let mut j = i
+      while j < end && lines[j] is "" {
+        j = j + 1
+      }
+      for _ in i..<j {
+        sb.write_char('\n')
+      }
+      last_ended_space = false
+      i = j
+      continue
+    }
+    let mut text = line
+    if i + 1 < end && lines[i + 1] is "" {
+      text = trim_end_spaces(text)
+    } else if i + 1 == end && trailing_newlines > 0 {
+      text = trim_end_spaces(text)
+    }
+    sb.write_string(text)
+    last_ended_space = ends_with_space(text)
+    if i + 1 < end &&
+      !(lines[i + 1] is "") &&
+      !ends_with_space(text) {
+      sb.write_char(' ')
+      last_ended_space = true
+    }
+    i = i + 1
+  }
+  for _ in 0..<trailing_newlines {
+    sb.write_char('\n')
+    last_ended_space = false
+  }
+  if trailing_space && !last_ended_space {
+    sb.write_char(' ')
+  }
+  sb.to_string()
+}
+
+///|
+fn trim_end_spaces(text : String) -> String {
+  let chars = text.to_array()
+  let mut end = chars.length()
+  while end > 0 && (chars[end - 1] is ' ' || chars[end - 1] is '\t') {
+    end = end - 1
+  }
+  if end == chars.length() {
+    return text
+  }
+  let sb = StringBuilder::new()
+  for i in 0..<end {
+    sb.write_char(chars[i])
+  }
+  sb.to_string()
+}
+
+///|
+fn ends_with_space(text : String) -> Bool {
+  let chars = text.to_array()
+  if chars.length() == 0 {
+    return false
+  }
+  let last = chars[chars.length() - 1]
+  last is ' ' || last is '\t'
 }
 
 ///|

@@ -62,6 +62,10 @@ def unescape_event_value(text):
             out.append("\r")
         elif esc == "t":
             out.append("\t")
+        elif esc == "b":
+            out.append("\b")
+        elif esc == "f":
+            out.append("\f")
         elif esc == "0":
             out.append("\0")
         elif esc == "\\":
@@ -266,16 +270,17 @@ def parse_event_scalar(style, raw):
 
 
 def parse_event_line(line):
-    line = line.strip()
-    if not line:
+    line = line.rstrip("\n")
+    if not line.strip():
         return None
+    line = line.lstrip()
     if line.startswith("+") or line.startswith("-"):
         parts = line.split()
         kind = parts[0]
         tokens = parts[1:]
         return ("open" if kind[0] == "+" else "close", kind[1:], tokens)
     if line.startswith("=VAL"):
-        rest = line[4:].strip()
+        rest = line[4:].lstrip()
         anchor = None
         tag = None
         style = ":"

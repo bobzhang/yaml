@@ -171,18 +171,22 @@ fn split_documents(input : String) -> Array[String] {
   let docs : Array[String] = []
   let sb = StringBuilder::new()
   let mut has_content = false
+  let mut pending_doc = false
   for line_view in normalized.split("\n") {
     let line = line_view.to_string()
     match doc_start_rest(line) {
       Some(rest) => {
-        if has_content && !sb.is_empty() {
+        if pending_doc || has_content {
           docs.push(sb.to_string())
           sb.reset()
         }
         has_content = false
+        pending_doc = true
         if rest != "" {
+          if !sb.is_empty() {
+            sb.write_char('\n')
+          }
           sb.write_string(rest)
-          sb.write_char('\n')
           has_content = true
         }
         continue
@@ -190,20 +194,23 @@ fn split_documents(input : String) -> Array[String] {
       None => ()
     }
     if is_doc_end_marker(line) {
-      if has_content && !sb.is_empty() {
+      if pending_doc || has_content {
         docs.push(sb.to_string())
         sb.reset()
       }
       has_content = false
+      pending_doc = false
       continue
     }
+    if !sb.is_empty() {
+      sb.write_char('\n')
+    }
     sb.write_string(line)
-    sb.write_char('\n')
     if !has_content && !is_non_content_line(line) {
       has_content = true
     }
   }
-  if !sb.is_empty() || docs.length() == 0 {
+  if pending_doc || has_content || docs.length() == 0 {
     docs.push(sb.to_string())
   }
   docs
