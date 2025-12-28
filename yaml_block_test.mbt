@@ -28,8 +28,8 @@ test "parse empty mapping keys" {
   assert_eq(
     docs[0],
     Yaml::Map([
-      (Yaml::String(""), Yaml::String("a")),
-      (Yaml::String(""), Yaml::String("b")),
+      (Yaml::Null, Yaml::String("a")),
+      (Yaml::Null, Yaml::String("b")),
     ]),
   )
 }

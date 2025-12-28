@@ -78,23 +78,23 @@ test "parse flow collections" {
   assert_eq(
     parse_yaml("{a:, b: 1}"),
     Yaml::Map([
-      (Yaml::String("a"), Yaml::String("")),
+      (Yaml::String("a"), Yaml::Null),
       (Yaml::String("b"), Yaml::Int(1)),
     ]),
   )
   assert_eq(
     parse_yaml("{: 1}"),
-    Yaml::Map([(Yaml::String(""), Yaml::Int(1))]),
+    Yaml::Map([(Yaml::Null, Yaml::Int(1))]),
   )
   assert_eq(
     parse_yaml("{:}"),
-    Yaml::Map([(Yaml::String(""), Yaml::Null)]),
+    Yaml::Map([(Yaml::Null, Yaml::Null)]),
   )
   assert_eq(
     parse_yaml("{a, b:}"),
     Yaml::Map([
-      (Yaml::String("a"), Yaml::String("")),
-      (Yaml::String("b"), Yaml::String("")),
+      (Yaml::String("a"), Yaml::Null),
+      (Yaml::String("b"), Yaml::Null),
     ]),
   )
   assert_eq(

@@ -285,7 +285,7 @@ fn parse_inline_value(ctx : TagContext, text : String) -> Yaml raise ParseError 
 fn parse_inline_key(ctx : TagContext, text : String) -> Yaml raise ParseError {
   let trimmed = text.trim().to_string()
   if trimmed is "" {
-    Yaml::String("")
+    Yaml::Null
   } else {
     parse_inline_value(ctx, text)
   }
@@ -314,6 +314,21 @@ fn parse_value_from_text(
       (Yaml::Null, next_index)
     }
   } else {
+    if trimmed_value is "-" || trimmed_value.has_prefix("- ") {
+      let virtual_line = {
+        number: lines[line_index].number,
+        indent: indent + 2,
+        has_tab_indent: false,
+        raw: trimmed_value,
+        content: trimmed_value,
+      }
+      let temp : Array[Line] = [virtual_line]
+      for i in (line_index + 1)..<lines.length() {
+        temp.push(lines[i])
+      }
+      let (value, next) = parse_block_seq(ctx, temp, 0, indent + 2)
+      return (value, line_index + next)
+    }
     if trimmed_value.has_prefix("\"") && !is_terminated_double(trimmed_value) {
       let (combined, next) =
         collect_quoted_multiline(lines, line_index, '"', trimmed_value)
@@ -573,21 +588,13 @@ fn parse_explicit_entry(
         parse_value_from_text(ctx, lines, value_line, indent, value_text, false)
       ((key, value), next)
     } else {
-      ((key, Yaml::String("")), next_after_key)
+      ((key, Yaml::Null), next_after_key)
     }
   } else {
-    match split_key_value_opt(rest) {
-      Some((key_text, value_text)) => {
-        let key = parse_inline_key(ctx, key_text)
-        let (value, next) =
-          parse_value_from_text(ctx, lines, index, indent, value_text, false)
-        ((key, value), next)
-      }
-      None => {
-        let key = parse_inline_key(ctx, rest)
-        let value_line = next_non_empty(lines, index + 1)
-        if value_line < lines.length() &&
-          is_value_line(lines[value_line], indent) {
+    match try_parse_block_scalar(ctx, rest, lines, index + 1, indent) {
+      Some((key, next_after_key)) => {
+        let value_line = next_non_empty(lines, next_after_key)
+        if value_line < lines.length() && is_value_line(lines[value_line], indent) {
           let value_text = lines[value_line].content
             .view(start_offset=1)
             .to_string()
@@ -595,7 +602,32 @@ fn parse_explicit_entry(
             parse_value_from_text(ctx, lines, value_line, indent, value_text, false)
           ((key, value), next)
         } else {
-          ((key, Yaml::String("")), index + 1)
+          ((key, Yaml::Null), next_after_key)
+        }
+      }
+      None => {
+        match split_key_value_opt(rest) {
+          Some((key_text, value_text)) => {
+            let key = parse_inline_key(ctx, key_text)
+            let (value, next) =
+              parse_value_from_text(ctx, lines, index, indent, value_text, false)
+            ((key, value), next)
+          }
+          None => {
+            let key = parse_inline_key(ctx, rest)
+            let value_line = next_non_empty(lines, index + 1)
+            if value_line < lines.length() &&
+              is_value_line(lines[value_line], indent) {
+              let value_text = lines[value_line].content
+                .view(start_offset=1)
+                .to_string()
+              let (value, next) =
+                parse_value_from_text(ctx, lines, value_line, indent, value_text, false)
+              ((key, value), next)
+            } else {
+              ((key, Yaml::Null), index + 1)
+            }
+          }
         }
       }
     }

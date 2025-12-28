@@ -63,8 +63,8 @@ test "tag-only line applies to following block node" {
     Yaml::Tagged(
       tag="tag:yaml.org,2002:set",
       value=Yaml::Map([
-        (Yaml::String("Mark McGwire"), Yaml::String("")),
-        (Yaml::String("Sammy Sosa"), Yaml::String("")),
+        (Yaml::String("Mark McGwire"), Yaml::Null),
+        (Yaml::String("Sammy Sosa"), Yaml::Null),
       ]),
     ),
   )
@@ -184,8 +184,8 @@ test "parse set tag" {
     Yaml::Tagged(
       tag="tag:yaml.org,2002:set",
       value=Yaml::Map([
-        (Yaml::String("a"), Yaml::String("")),
-        (Yaml::String("b"), Yaml::String("")),
+        (Yaml::String("a"), Yaml::Null),
+        (Yaml::String("b"), Yaml::Null),
       ]),
     ),
   )

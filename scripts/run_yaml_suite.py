@@ -199,6 +199,8 @@ def wrap_props(node, anchor, tag):
 
 
 def parse_scalar_value(raw):
+    if raw == "":
+        return null_node()
     lowered = raw.lower()
     if lowered == "null" or raw == "~":
         return null_node()
