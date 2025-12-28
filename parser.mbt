@@ -94,6 +94,10 @@ fn parse_directive(ctx : TagContext, line : String) -> Unit raise ParseError {
         detail="YAML directive expects version",
       )
     }
+    let version = parts[1]
+    if version != "1.2" {
+      raise ParseError::InvalidDirective(detail="unsupported YAML version")
+    }
   } else {
     raise ParseError::InvalidDirective(detail="unknown directive")
   }

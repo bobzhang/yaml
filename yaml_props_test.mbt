@@ -65,6 +65,38 @@ test "explicit tags keep plain scalars as strings" {
 }
 
 ///|
+test "parse binary tag" {
+  assert_eq(
+    parse_yaml("!!binary YWJj"),
+    Yaml::Tagged(
+      tag="tag:yaml.org,2002:binary",
+      value=Yaml::Binary(b"abc"),
+    ),
+  )
+  let input =
+    #|!!binary |
+    #|  YWJj
+    #|  ZGVm
+    #|
+  assert_eq(
+    parse_yaml(input),
+    Yaml::Tagged(
+      tag="tag:yaml.org,2002:binary",
+      value=Yaml::Binary(b"abcdef"),
+    ),
+  )
+}
+
+///|
+test "reject invalid binary tag" {
+  let input = "!!binary \"@@\""
+  let result : Result[Yaml, ParseError] = try? parse_yaml(input)
+  guard result is Err(ParseError::InvalidTagValue(_)) else {
+    fail("expected invalid tag value error")
+  }
+}
+
+///|
 test "parse core tagged scalars" {
   assert_eq(
     parse_yaml("!!str 3"),

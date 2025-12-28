@@ -26,6 +26,7 @@ pub(all) enum Yaml {
   Int(Int)
   Float(Float)
   String(String)
+  Binary(Bytes)
   Seq(Array[Yaml])
   Map(Array[(Yaml, Yaml)])
   Alias(String)

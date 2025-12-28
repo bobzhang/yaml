@@ -71,6 +71,12 @@ fn coerce_tag(tag : String, value : Yaml) -> Yaml raise ParseError {
       String(s) => parse_tagged_float(tag, s)
       _ => value
     }
+  } else if is_core_tag(tag, "binary") {
+    match value {
+      Binary(_) => value
+      String(s) => parse_tagged_binary(tag, s)
+      _ => raise ParseError::InvalidTagValue(tag~, value="<non-scalar>")
+    }
   } else if is_core_tag(tag, "str") {
     value
   } else {
@@ -105,6 +111,11 @@ fn parse_tagged_float(tag : String, raw : String) -> Yaml raise ParseError {
     Some(Yaml::Int(v)) => Yaml::Float(Float::from_int(v))
     _ => raise ParseError::InvalidTagValue(tag~, value=raw)
   }
+}
+
+///|
+fn parse_tagged_binary(tag : String, raw : String) -> Yaml raise ParseError {
+  Yaml::Binary(decode_base64(tag, raw))
 }
 
 ///|
