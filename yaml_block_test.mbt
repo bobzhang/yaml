@@ -62,3 +62,58 @@ test "parse block scalars and negatives" {
   assert_eq(parse_yaml("hello world"), Yaml::String("hello world"))
   assert_eq(parse_yaml("-1"), Yaml::Int(-1))
 }
+
+///|
+test "parse block scalars" {
+  let literal_input =
+    #|literal: |
+    #|  a
+    #|  b
+    #|
+  let literal_value =
+    #|a
+    #|b
+    #|
+  assert_eq(
+    parse_yaml(literal_input),
+    Yaml::Map([(Yaml::String("literal"), Yaml::String(literal_value))]),
+  )
+  let folded_input =
+    #|folded: >
+    #|  a
+    #|  b
+    #|
+    #|  c
+    #|
+  let folded_value =
+    #|a b
+    #|
+    #|c
+    #|
+  assert_eq(
+    parse_yaml(folded_input),
+    Yaml::Map([(Yaml::String("folded"), Yaml::String(folded_value))]),
+  )
+  let strip_input =
+    #|strip: |-
+    #|  a
+    #|
+  assert_eq(
+    parse_yaml(strip_input),
+    Yaml::Map([(Yaml::String("strip"), Yaml::String("a"))]),
+  )
+  let keep_input =
+    #|keep: |+
+    #|  a
+    #|
+    #|
+  let keep_value =
+    #|a
+    #|
+    #|
+    #|
+  assert_eq(
+    parse_yaml(keep_input),
+    Yaml::Map([(Yaml::String("keep"), Yaml::String(keep_value))]),
+  )
+}

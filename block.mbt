@@ -2,19 +2,29 @@
 priv struct Line {
   number : Int
   indent : Int
+  raw : String
   content : String
+}
+
+///|
+priv enum Chomp {
+  Clip
+  Strip
+  Keep
 }
 
 ///|
 fn parse_block_document(input : String) -> Yaml raise ParseError {
   let lines = collect_lines(input)
-  if lines.length() == 0 {
+  let start = next_non_empty(lines, 0)
+  if start >= lines.length() {
     return Yaml::Null
   }
-  let first = lines[0]
-  let (value, next) = parse_block_node(lines, 0, first.indent)
-  if next < lines.length() {
-    let line = lines[next]
+  let first = lines[start]
+  let (value, next) = parse_block_node(lines, start, first.indent)
+  let rest = next_non_empty(lines, next)
+  if rest < lines.length() {
+    let line = lines[rest]
     raise ParseError::UnexpectedChar(
       pos={ line: line.number, column: line.indent + 1 },
       found='-',
@@ -29,14 +39,15 @@ fn parse_block_node(
   index : Int,
   indent : Int,
 ) -> (Yaml, Int) raise ParseError {
-  if index >= lines.length() {
+  let start = next_non_empty(lines, index)
+  if start >= lines.length() {
     let pos = match lines.last() {
       None => { line: 1, column: 1 }
       Some(last) => { line: last.number, column: last.indent + 1 }
     }
     raise ParseError::UnexpectedEof(pos~)
   }
-  let line = lines[index]
+  let line = lines[start]
   if line.indent < indent {
     raise ParseError::InvalidIndent(pos={
       line: line.number,
@@ -44,12 +55,21 @@ fn parse_block_node(
     })
   }
   if is_seq_line(line, indent) {
-    parse_block_seq(lines, index, indent)
+    parse_block_seq(lines, start, indent)
   } else if is_map_line(line, indent) {
-    parse_block_map(lines, index, indent)
+    parse_block_map(lines, start, indent)
   } else {
-    (parse_inline_value(line.content), index + 1)
+    (parse_inline_value(line.content), start + 1)
   }
+}
+
+///|
+fn next_non_empty(lines : Array[Line], index : Int) -> Int {
+  let mut i = index
+  while i < lines.length() && lines[i].content is "" {
+    i = i + 1
+  }
+  i
 }
 
 ///|
@@ -61,6 +81,10 @@ fn parse_block_seq(
   let items : Array[Yaml] = []
   let mut i = index
   while i < lines.length() {
+    i = next_non_empty(lines, i)
+    if i >= lines.length() {
+      break
+    }
     let line = lines[i]
     if line.indent < indent {
       break
@@ -74,31 +98,46 @@ fn parse_block_seq(
       .trim_start()
       .to_string()
     if rest is "" {
-      if i + 1 >= lines.length() || lines[i + 1].indent <= indent {
+      let next_index = next_non_empty(lines, i + 1)
+      if next_index >= lines.length() || lines[next_index].indent <= indent {
         items.push(Yaml::Null)
-        i = i + 1
+        i = next_index
       } else {
-        let child_indent = lines[i + 1].indent
-        let (value, next) = parse_block_node(lines, i + 1, child_indent)
+        let child_indent = lines[next_index].indent
+        let (value, next) = parse_block_node(lines, next_index, child_indent)
         items.push(value)
         i = next
       }
-    } else if split_key_value_opt(rest) is Some(_) {
-      let virtual_line = {
-        number: line.number,
-        indent: indent + 2,
-        content: rest,
-      }
-      let temp : Array[Line] = [virtual_line]
-      for j in (i + 1)..<lines.length() {
-        temp.push(lines[j])
-      }
-      let (value, next) = parse_block_map(temp, 0, indent + 2)
-      items.push(value)
-      i = i + next
     } else {
-      items.push(parse_inline_value(rest))
-      i = i + 1
+      let indicator = parse_block_indicator(rest)
+      if indicator is Some((style, chomp)) {
+        let (value, next) = parse_block_scalar(
+          lines,
+          i + 1,
+          indent,
+          style,
+          chomp,
+        )
+        items.push(Yaml::String(value))
+        i = next
+      } else if split_key_value_opt(rest) is Some(_) {
+        let virtual_line = {
+          number: line.number,
+          indent: indent + 2,
+          raw: rest,
+          content: rest,
+        }
+        let temp : Array[Line] = [virtual_line]
+        for j in (i + 1)..<lines.length() {
+          temp.push(lines[j])
+        }
+        let (value, next) = parse_block_map(temp, 0, indent + 2)
+        items.push(value)
+        i = i + next
+      } else {
+        items.push(parse_inline_value(rest))
+        i = i + 1
+      }
     }
   }
   (Yaml::Seq(items), i)
@@ -113,6 +152,10 @@ fn parse_block_map(
   let items : Array[(Yaml, Yaml)] = []
   let mut i = index
   while i < lines.length() {
+    i = next_non_empty(lines, i)
+    if i >= lines.length() {
+      break
+    }
     let line = lines[i]
     if line.indent < indent {
       break
@@ -124,19 +167,33 @@ fn parse_block_map(
     let key = parse_inline_value(key_text)
     let trimmed_value = value_text.trim_start().to_string()
     if trimmed_value is "" {
-      if i + 1 >= lines.length() || lines[i + 1].indent <= indent {
+      let next_index = next_non_empty(lines, i + 1)
+      if next_index >= lines.length() || lines[next_index].indent <= indent {
         items.push((key, Yaml::Null))
-        i = i + 1
+        i = next_index
       } else {
-        let child_indent = lines[i + 1].indent
-        let (value, next) = parse_block_node(lines, i + 1, child_indent)
+        let child_indent = lines[next_index].indent
+        let (value, next) = parse_block_node(lines, next_index, child_indent)
         items.push((key, value))
         i = next
       }
     } else {
-      let value = parse_inline_value(trimmed_value)
-      items.push((key, value))
-      i = i + 1
+      let indicator = parse_block_indicator(trimmed_value)
+      if indicator is Some((style, chomp)) {
+        let (value, next) = parse_block_scalar(
+          lines,
+          i + 1,
+          indent,
+          style,
+          chomp,
+        )
+        items.push((key, Yaml::String(value)))
+        i = next
+      } else {
+        let value = parse_inline_value(trimmed_value)
+        items.push((key, value))
+        i = i + 1
+      }
     }
   }
   (Yaml::Map(items), i)
@@ -167,6 +224,147 @@ fn parse_inline_value(text : String) -> Yaml raise ParseError {
   } else {
     parse_scalar_value(trimmed)
   }
+}
+
+///|
+fn parse_block_indicator(text : String) -> (Char, Chomp)? {
+  let trimmed = text.trim().to_string()
+  if trimmed is "" {
+    return None
+  }
+  let chars = trimmed.to_array()
+  let style = chars[0]
+  if !(style is '|' || style is '>') {
+    return None
+  }
+  if chars.length() == 1 {
+    return Some((style, Chomp::Clip))
+  }
+  let modifier = chars[1]
+  if modifier is '+' {
+    Some((style, Chomp::Keep))
+  } else if modifier is '-' {
+    Some((style, Chomp::Strip))
+  } else {
+    None
+  }
+}
+
+///|
+fn parse_block_scalar(
+  lines : Array[Line],
+  index : Int,
+  parent_indent : Int,
+  style : Char,
+  chomp : Chomp,
+) -> (String, Int) {
+  let mut i = index
+  let mut content_indent : Int? = None
+  let collected : Array[String] = []
+  let mut pending_blank = 0
+  while i < lines.length() {
+    let line = lines[i]
+    let raw_content = line.raw.view(start_offset=line.indent).to_string()
+    if raw_content.trim() is "" {
+      pending_blank = pending_blank + 1
+      i = i + 1
+      continue
+    }
+    if line.indent <= parent_indent {
+      break
+    }
+    if content_indent is None {
+      content_indent = Some(line.indent)
+    }
+    let indent = content_indent.unwrap_or(line.indent)
+    if line.indent < indent {
+      break
+    }
+    for _ in 0..<pending_blank {
+      collected.push("")
+    }
+    pending_blank = 0
+    let raw = line.raw
+    let text = raw.view(start_offset=indent).to_string()
+    collected.push(text)
+    i = i + 1
+  }
+  for _ in 0..<pending_blank {
+    collected.push("")
+  }
+  let base = if style is '|' {
+    join_lines(collected)
+  } else {
+    fold_lines(collected)
+  }
+  let with_newline = if collected.length() > 0 { base + "\n" } else { "" }
+  let value = apply_chomp(with_newline, chomp)
+  (value, i)
+}
+
+///|
+fn join_lines(lines : Array[String]) -> String {
+  let sb = StringBuilder::new()
+  for idx in 0..<lines.length() {
+    if idx > 0 {
+      sb.write_char('\n')
+    }
+    sb.write_string(lines[idx])
+  }
+  sb.to_string()
+}
+
+///|
+fn fold_lines(lines : Array[String]) -> String {
+  let sb = StringBuilder::new()
+  let mut prev_blank = false
+  for idx in 0..<lines.length() {
+    let line = lines[idx]
+    let is_blank = line is ""
+    if idx > 0 {
+      if is_blank || prev_blank {
+        sb.write_char('\n')
+      } else {
+        sb.write_char(' ')
+      }
+    }
+    sb.write_string(line)
+    prev_blank = is_blank
+  }
+  sb.to_string()
+}
+
+///|
+fn apply_chomp(text : String, chomp : Chomp) -> String {
+  match chomp {
+    Chomp::Clip => {
+      let trimmed = trim_trailing_newlines(text)
+      if trimmed is "" {
+        ""
+      } else {
+        trimmed + "\n"
+      }
+    }
+    Chomp::Strip => trim_trailing_newlines(text)
+    Chomp::Keep => text
+  }
+}
+
+///|
+fn trim_trailing_newlines(text : String) -> String {
+  let chars = text.to_array()
+  let mut end = chars.length()
+  while end > 0 && chars[end - 1] is '\n' {
+    end = end - 1
+  }
+  if end == chars.length() {
+    return text
+  }
+  let sb = StringBuilder::new()
+  for i in 0..<end {
+    sb.write_char(chars[i])
+  }
+  sb.to_string()
 }
 
 ///|
@@ -290,11 +488,7 @@ fn collect_lines(input : String) -> Array[Line] raise ParseError {
     let content = line.view(start_offset=indent).to_string()
     let stripped = strip_inline_comment(content)
     let trimmed = stripped.trim_end().to_string()
-    if trimmed is "" {
-      number = number + 1
-      continue
-    }
-    lines.push({ number, indent, content: trimmed })
+    lines.push({ number, indent, raw: line, content: trimmed })
     number = number + 1
   }
   lines
