@@ -26,6 +26,7 @@ test "parse flow scalars" {
     parse_yaml("[http://example.com]"),
     Yaml::Seq([Yaml::String("http://example.com")]),
   )
+  assert_eq(parse_yaml("[foo#bar]"), Yaml::Seq([Yaml::String("foo#bar")]))
 }
 
 ///|
@@ -48,6 +49,10 @@ test "parse flow collections" {
       (Yaml::String("a"), Yaml::Int(1)),
       (Yaml::String("b"), Yaml::Seq([Yaml::Bool(true), Yaml::Null])),
     ]),
+  )
+  assert_eq(
+    parse_yaml("{hello world: 1}"),
+    Yaml::Map([(Yaml::String("hello world"), Yaml::Int(1))]),
   )
 }
 

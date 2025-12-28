@@ -56,9 +56,12 @@ fn parse_single_quoted(scanner : Scanner) -> String raise ParseError {
 ///|
 fn parse_plain_scalar(scanner : Scanner) -> String raise ParseError {
   let sb = StringBuilder::new()
-  while scanner.peek() is Some(c) && !is_flow_plain_break(scanner, c) {
+  let mut prev_space = true
+  while scanner.peek() is Some(c) &&
+        !is_flow_plain_break(scanner, c, prev_space) {
     ignore(scanner.advance())
     sb.write_char(c)
+    prev_space = c.is_whitespace()
   }
   let raw = sb.to_string().trim_end().to_string()
   if raw is "" {
@@ -72,14 +75,14 @@ fn parse_plain_scalar(scanner : Scanner) -> String raise ParseError {
 }
 
 ///|
-fn is_flow_plain_break(scanner : Scanner, c : Char) -> Bool {
+fn is_flow_plain_break(scanner : Scanner, c : Char, prev_space : Bool) -> Bool {
   if c is '\n' || c is '\r' || c is '\t' {
     return true
   }
   if c is ',' || c is ']' || c is '}' || c is '[' || c is '{' {
     return true
   }
-  if c is '#' {
+  if c is '#' && prev_space {
     return true
   }
   if c is ':' {
