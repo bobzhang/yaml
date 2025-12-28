@@ -13,6 +13,11 @@ test "parse flow scalars" {
   assert_eq(parse_yaml("\"hi\""), Yaml::String("hi"))
   assert_eq(parse_yaml("'hi'"), Yaml::String("hi"))
   assert_eq(parse_yaml("\"line\\nnext\""), Yaml::String("line\nnext"))
+  let continued =
+    #|"line\
+    #|  next"
+  assert_eq(parse_yaml(continued), Yaml::String("linenext"))
+  assert_eq(parse_yaml("\"a\\N b\""), Yaml::String("a\u{0085} b"))
   assert_eq(
     parse_yaml("[hello world]"),
     Yaml::Seq([Yaml::String("hello world")]),

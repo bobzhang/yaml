@@ -11,7 +11,11 @@ fn parse_double_quoted(scanner : Scanner) -> String raise ParseError {
       }
       Some('\\') => {
         ignore(scanner.advance())
-        sb.write_char(parse_escape(scanner))
+        match scanner.peek() {
+          Some('\n') => skip_escaped_line_break(scanner)
+          Some('\r') => skip_escaped_line_break(scanner)
+          _ => sb.write_char(parse_escape(scanner))
+        }
       }
       Some(c) => {
         ignore(scanner.advance())
@@ -102,6 +106,10 @@ fn parse_escape(scanner : Scanner) -> Char raise ParseError {
     Some('f') => '\u{000c}'
     Some('r') => '\r'
     Some('e') => '\u{001b}'
+    Some('N') => '\u{0085}'
+    Some('_') => '\u{00a0}'
+    Some('L') => '\u{2028}'
+    Some('P') => '\u{2029}'
     Some(' ') => ' '
     Some('"') => '"'
     Some('\\') => '\\'
@@ -123,6 +131,21 @@ fn parse_escape(scanner : Scanner) -> Char raise ParseError {
         pos=scanner.position(),
         value=other.to_string(),
       )
+  }
+}
+
+///|
+fn skip_escaped_line_break(scanner : Scanner) -> Unit {
+  if scanner.peek() is Some('\r') {
+    ignore(scanner.advance())
+    if scanner.peek() is Some('\n') {
+      ignore(scanner.advance())
+    }
+  } else if scanner.peek() is Some('\n') {
+    ignore(scanner.advance())
+  }
+  while scanner.peek() is Some(c) && (c is ' ' || c is '\t') {
+    ignore(scanner.advance())
   }
 }
 

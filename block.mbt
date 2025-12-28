@@ -63,7 +63,7 @@ fn parse_block_node(
   } else if is_map_line(line, indent) {
     parse_block_map(ctx, lines, start, indent)
   } else {
-    (parse_inline_value(ctx, line.content), start + 1)
+    parse_value_from_text(ctx, lines, start, indent, line.content)
   }
 }
 
@@ -241,6 +241,14 @@ fn parse_value_from_text(
       (Yaml::Null, next_index)
     }
   } else {
+    if trimmed_value.has_prefix("\"") && !is_terminated_double(trimmed_value) {
+      let (combined, next) = collect_quoted_multiline(lines, line_index, '"')
+      return (parse_inline_value(ctx, combined), next)
+    }
+    if trimmed_value.has_prefix("'") && !is_terminated_single(trimmed_value) {
+      let (combined, next) = collect_quoted_multiline(lines, line_index, '\'')
+      return (parse_inline_value(ctx, combined), next)
+    }
     match
       try_parse_block_scalar(ctx, trimmed_value, lines, line_index + 1, indent) {
       Some((node, next)) => (node, next)
@@ -264,6 +272,87 @@ fn parse_value_from_text(
       }
     }
   }
+}
+
+///|
+fn collect_quoted_multiline(
+  lines : Array[Line],
+  index : Int,
+  quote : Char,
+) -> (String, Int) raise ParseError {
+  let mut combined = lines[index].content.trim_end().to_string()
+  let mut i = index + 1
+  while i < lines.length() {
+    let raw = lines[i].raw.view(start_offset=lines[i].indent).to_string()
+    combined = combined + "\n" + raw
+    if quote is '"' {
+      if is_terminated_double(combined) {
+        return (combined, i + 1)
+      }
+    } else if is_terminated_single(combined) {
+      return (combined, i + 1)
+    }
+    i = i + 1
+  }
+  raise ParseError::UnexpectedEof(pos={
+    line: match lines.last() {
+      None => 1
+      Some(last) => last.number
+    },
+    column: 1,
+  })
+}
+
+///|
+fn is_terminated_double(text : String) -> Bool {
+  let chars = text.to_array()
+  let mut escaped = false
+  let mut i = 0
+  while i < chars.length() {
+    let c = chars[i]
+    if i == 0 && c is '"' {
+      i = i + 1
+      continue
+    }
+    if escaped {
+      escaped = false
+      i = i + 1
+      continue
+    }
+    if c is '\\' {
+      escaped = true
+      i = i + 1
+      continue
+    }
+    if c is '"' {
+      return true
+    }
+    i = i + 1
+  }
+  false
+}
+
+///|
+fn is_terminated_single(text : String) -> Bool {
+  let chars = text.to_array()
+  let mut i = 0
+  while i < chars.length() {
+    let c = chars[i]
+    if i == 0 && c is '\'' {
+      i = i + 1
+      continue
+    }
+    if c is '\'' {
+      if i + 1 < chars.length() && chars[i + 1] is '\'' {
+        i = i + 2
+        continue
+      } else {
+        return true
+      }
+    }
+    i = i + 1
+  }
+  false
 }
 
 ///|
