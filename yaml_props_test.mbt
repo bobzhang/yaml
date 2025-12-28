@@ -97,6 +97,89 @@ test "reject invalid binary tag" {
 }
 
 ///|
+test "parse timestamp tag" {
+  assert_eq(
+    parse_yaml("!!timestamp 2001-12-15"),
+    Yaml::Tagged(
+      tag="tag:yaml.org,2002:timestamp",
+      value=Yaml::String("2001-12-15"),
+    ),
+  )
+  assert_eq(
+    parse_yaml("!!timestamp 2001-12-15T02:59:43.1Z"),
+    Yaml::Tagged(
+      tag="tag:yaml.org,2002:timestamp",
+      value=Yaml::String("2001-12-15T02:59:43.1Z"),
+    ),
+  )
+}
+
+///|
+test "reject invalid timestamp tag" {
+  let input = "!!timestamp 2023-13-01"
+  let result : Result[Yaml, ParseError] = try? parse_yaml(input)
+  guard result is Err(ParseError::InvalidTagValue(_)) else {
+    fail("expected invalid tag value error")
+  }
+}
+
+///|
+test "parse set tag" {
+  assert_eq(
+    parse_yaml("!!set {a:, b:}"),
+    Yaml::Tagged(
+      tag="tag:yaml.org,2002:set",
+      value=Yaml::Map([
+        (Yaml::String("a"), Yaml::Null),
+        (Yaml::String("b"), Yaml::Null),
+      ]),
+    ),
+  )
+}
+
+///|
+test "reject invalid set tag" {
+  let input = "!!set {a: 1}"
+  let result : Result[Yaml, ParseError] = try? parse_yaml(input)
+  guard result is Err(ParseError::InvalidTagValue(_)) else {
+    fail("expected invalid tag value error")
+  }
+}
+
+///|
+test "parse pairs and omap tags" {
+  assert_eq(
+    parse_yaml("!!pairs [{a: 1}, {b: 2}]"),
+    Yaml::Tagged(
+      tag="tag:yaml.org,2002:pairs",
+      value=Yaml::Seq([
+        Yaml::Map([(Yaml::String("a"), Yaml::Int(1))]),
+        Yaml::Map([(Yaml::String("b"), Yaml::Int(2))]),
+      ]),
+    ),
+  )
+  assert_eq(
+    parse_yaml("!!omap [{a: 1}, {b: 2}]"),
+    Yaml::Tagged(
+      tag="tag:yaml.org,2002:omap",
+      value=Yaml::Seq([
+        Yaml::Map([(Yaml::String("a"), Yaml::Int(1))]),
+        Yaml::Map([(Yaml::String("b"), Yaml::Int(2))]),
+      ]),
+    ),
+  )
+}
+
+///|
+test "reject invalid omap tag" {
+  let input = "!!omap [{a: 1}, {a: 2}]"
+  let result : Result[Yaml, ParseError] = try? parse_yaml(input)
+  guard result is Err(ParseError::InvalidTagValue(_)) else {
+    fail("expected invalid tag value error")
+  }
+}
+
+///|
 test "parse core tagged scalars" {
   assert_eq(
     parse_yaml("!!str 3"),

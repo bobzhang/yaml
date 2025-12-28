@@ -77,6 +77,21 @@ fn coerce_tag(tag : String, value : Yaml) -> Yaml raise ParseError {
       String(s) => parse_tagged_binary(tag, s)
       _ => raise ParseError::InvalidTagValue(tag~, value="<non-scalar>")
     }
+  } else if is_core_tag(tag, "timestamp") {
+    match value {
+      String(s) => parse_tagged_timestamp(tag, s)
+      _ => raise ParseError::InvalidTagValue(tag~, value="<non-scalar>")
+    }
+  } else if is_core_tag(tag, "map") {
+    validate_tagged_map(tag, value)
+  } else if is_core_tag(tag, "seq") {
+    validate_tagged_seq(tag, value)
+  } else if is_core_tag(tag, "set") {
+    validate_tagged_set(tag, value)
+  } else if is_core_tag(tag, "omap") {
+    validate_tagged_omap(tag, value)
+  } else if is_core_tag(tag, "pairs") {
+    validate_tagged_pairs(tag, value)
   } else if is_core_tag(tag, "str") {
     value
   } else {
@@ -116,6 +131,92 @@ fn parse_tagged_float(tag : String, raw : String) -> Yaml raise ParseError {
 ///|
 fn parse_tagged_binary(tag : String, raw : String) -> Yaml raise ParseError {
   Yaml::Binary(decode_base64(tag, raw))
+}
+
+///|
+fn validate_tagged_map(tag : String, value : Yaml) -> Yaml raise ParseError {
+  match value {
+    Map(_) => value
+    _ => raise ParseError::InvalidTagValue(tag~, value="<non-map>")
+  }
+}
+
+///|
+fn validate_tagged_seq(tag : String, value : Yaml) -> Yaml raise ParseError {
+  match value {
+    Seq(_) => value
+    _ => raise ParseError::InvalidTagValue(tag~, value="<non-seq>")
+  }
+}
+
+///|
+fn validate_tagged_set(tag : String, value : Yaml) -> Yaml raise ParseError {
+  match value {
+    Map(items) => {
+      for pair in items {
+        if pair.1 != Yaml::Null {
+          raise ParseError::InvalidTagValue(tag~, value="<non-null>")
+        }
+      }
+      value
+    }
+    _ => raise ParseError::InvalidTagValue(tag~, value="<non-map>")
+  }
+}
+
+///|
+fn validate_tagged_pairs(tag : String, value : Yaml) -> Yaml raise ParseError {
+  match value {
+    Seq(items) => {
+      for item in items {
+        match item {
+          Map(entries) =>
+            if entries.length() != 1 {
+              raise ParseError::InvalidTagValue(tag~, value="<non-pair>")
+            }
+          _ => raise ParseError::InvalidTagValue(tag~, value="<non-map>")
+        }
+      }
+      value
+    }
+    _ => raise ParseError::InvalidTagValue(tag~, value="<non-seq>")
+  }
+}
+
+///|
+fn validate_tagged_omap(tag : String, value : Yaml) -> Yaml raise ParseError {
+  match value {
+    Seq(items) => {
+      let seen : Array[Yaml] = []
+      for item in items {
+        match item {
+          Map(entries) => {
+            if entries.length() != 1 {
+              raise ParseError::InvalidTagValue(tag~, value="<non-pair>")
+            }
+            let key = entries[0].0
+            if find_yaml_index(seen, key) is Some(_) {
+              raise ParseError::InvalidTagValue(tag~, value="<duplicate-key>")
+            }
+            seen.push(key)
+          }
+          _ => raise ParseError::InvalidTagValue(tag~, value="<non-map>")
+        }
+      }
+      value
+    }
+    _ => raise ParseError::InvalidTagValue(tag~, value="<non-seq>")
+  }
+}
+
+///|
+fn find_yaml_index(items : Array[Yaml], key : Yaml) -> Int? {
+  for i in 0..<items.length() {
+    if items[i] == key {
+      return Some(i)
+    }
+  }
+  None
 }
 
 ///|

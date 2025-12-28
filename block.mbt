@@ -752,6 +752,7 @@ fn split_key_value_opt(content : String) -> (String, String)? {
   let chars = content.to_array()
   let mut in_single = false
   let mut in_double = false
+  let mut depth = 0
   let mut i = 0
   let mut found = false
   let key_sb = StringBuilder::new()
@@ -795,8 +796,23 @@ fn split_key_value_opt(content : String) -> (String, String)? {
       i = i + 1
       continue
     }
+    if c is '{' || c is '[' {
+      depth = depth + 1
+      key_sb.write_char(c)
+      i = i + 1
+      continue
+    }
+    if c is '}' || c is ']' {
+      if depth > 0 {
+        depth = depth - 1
+      }
+      key_sb.write_char(c)
+      i = i + 1
+      continue
+    }
     if c is ':' {
-      if i + 1 == chars.length() || chars[i + 1].is_whitespace() {
+      if depth == 0 &&
+        (i + 1 == chars.length() || chars[i + 1].is_whitespace()) {
         found = true
         value_start = i + 1
         break
