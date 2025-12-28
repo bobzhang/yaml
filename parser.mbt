@@ -127,7 +127,8 @@ fn parse_directive(ctx : TagContext, line : String) -> Unit raise ParseError {
       raise ParseError::InvalidDirective(detail="unsupported YAML version")
     }
   } else {
-    raise ParseError::InvalidDirective(detail="unknown directive")
+    // Ignore unknown or reserved directives per YAML 1.2.
+    ()
   }
 }
 

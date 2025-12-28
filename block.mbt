@@ -495,7 +495,7 @@ fn collect_plain_continuation(
   lines : Array[Line],
   index : Int,
   indent : Int,
-) -> (Array[String], Int) {
+) -> (Array[String], Int) raise ParseError {
   let parts : Array[String] = []
   let mut i = index
   let mut base_indent : Int? = None
@@ -518,10 +518,32 @@ fn collect_plain_continuation(
       break
     }
     let text = line.raw.view(start_offset=base).to_string()
+    if has_plain_mapping_break(text) {
+      raise ParseError::InvalidIndent(pos={
+        line: line.number,
+        column: line.indent + 1,
+      })
+    }
     parts.push(text.trim_end().to_string())
     i = i + 1
   }
   (parts, i)
+}
+
+///|
+fn has_plain_mapping_break(text : String) -> Bool {
+  let chars = text.to_array()
+  let mut i = 0
+  while i < chars.length() {
+    let c = chars[i]
+    if c is ':' {
+      if i + 1 == chars.length() || chars[i + 1].is_whitespace() {
+        return true
+      }
+    }
+    i = i + 1
+  }
+  false
 }
 
 ///|
@@ -534,7 +556,10 @@ fn fold_plain_lines(first : String, rest : Array[String]) -> String {
 }
 
 ///|
-fn parse_block_indicator(text : String) -> (Char, Chomp, Int?)? {
+fn parse_block_indicator(
+  text : String,
+  pos : Position,
+) -> (Char, Chomp, Int?)? raise ParseError {
   let trimmed = text.trim().to_string()
   if trimmed is "" {
     return None
@@ -546,19 +571,44 @@ fn parse_block_indicator(text : String) -> (Char, Chomp, Int?)? {
   }
   let mut chomp = Chomp::Clip
   let mut indent : Int? = None
+  let mut chomp_set = false
+  let mut indent_set = false
   let mut i = 1
   while i < chars.length() {
     let c = chars[i]
     if c is '+' {
+      if chomp_set {
+        raise ParseError::InvalidIndent(pos~)
+      }
       chomp = Chomp::Keep
+      chomp_set = true
     } else if c is '-' {
+      if chomp_set {
+        raise ParseError::InvalidIndent(pos~)
+      }
       chomp = Chomp::Strip
+      chomp_set = true
     } else if c.is_ascii_digit() {
-      indent = Some(c.to_int() - '0'.to_int())
+      if indent_set {
+        raise ParseError::InvalidIndent(pos~)
+      }
+      let digit = c.to_int() - '0'.to_int()
+      if digit == 0 {
+        raise ParseError::InvalidIndent(pos~)
+      }
+      indent = Some(digit)
+      indent_set = true
     } else {
       break
     }
     i = i + 1
+  }
+  let mut rest = i
+  while rest < chars.length() && chars[rest].is_whitespace() {
+    rest = rest + 1
+  }
+  if rest < chars.length() && chars[rest] != '#' {
+    raise ParseError::InvalidIndent(pos~)
   }
   Some((style, chomp, indent))
 }
@@ -583,7 +633,8 @@ fn try_parse_block_scalar(
     .to_string()
     .trim_start()
     .to_string()
-  match parse_block_indicator(tail) {
+  let pos = { line: lines[index].number, column: lines[index].indent + 1 }
+  match parse_block_indicator(tail, pos) {
     None => None
     Some((style, chomp, indent_hint)) => {
       let (value, next) = parse_block_scalar(
@@ -611,6 +662,9 @@ fn parse_block_scalar(
     let line = lines[i]
     let raw_content = line.raw.view(start_offset=line.indent).to_string()
     if raw_content.trim() is "" {
+      if content_indent is None && line.indent <= parent_indent {
+        break
+      }
       pending_blank = pending_blank + 1
       i = i + 1
       continue

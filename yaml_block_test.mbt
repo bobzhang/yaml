@@ -158,6 +158,45 @@ test "parse block scalars" {
 }
 
 ///|
+test "parse empty block scalar with chomp keep" {
+  let input =
+    #|empty: |+
+    #|
+  assert_eq(
+    parse_yaml(input),
+    Yaml::Map([(Yaml::String("empty"), Yaml::String(""))]),
+  )
+}
+
+///|
+test "reject invalid block scalar indicators" {
+  let zero_input =
+    #|a: |0
+    #|  b
+    #|
+  let zero_result : Result[Yaml, ParseError] = try? parse_yaml(zero_input)
+  guard zero_result is Err(ParseError::InvalidIndent(_)) else {
+    fail("expected invalid indent indicator error")
+  }
+  let multi_digit_input =
+    #|a: |10
+    #|  b
+    #|
+  let multi_result : Result[Yaml, ParseError] = try? parse_yaml(multi_digit_input)
+  guard multi_result is Err(ParseError::InvalidIndent(_)) else {
+    fail("expected invalid indent indicator error")
+  }
+  let trailing_input =
+    #|a: |1---
+    #|  b
+    #|
+  let trailing_result : Result[Yaml, ParseError] = try? parse_yaml(trailing_input)
+  guard trailing_result is Err(ParseError::InvalidIndent(_)) else {
+    fail("expected invalid indicator trailing error")
+  }
+}
+
+///|
 test "parse explicit mapping keys" {
   let input =
     #|? key1
@@ -200,6 +239,19 @@ test "parse multiline plain scalars" {
     parse_yaml(input),
     Yaml::Map([(Yaml::String("key"), Yaml::String("line1 line2 line3"))]),
   )
+}
+
+///|
+test "reject mapping in multiline plain scalar" {
+  let input =
+    #|this
+    #| is
+    #|  invalid: x
+    #|
+  let result : Result[Yaml, ParseError] = try? parse_yaml(input)
+  guard result is Err(ParseError::InvalidIndent(_)) else {
+    fail("expected invalid indent error")
+  }
 }
 
 ///|

@@ -42,3 +42,13 @@ test "reject unsupported yaml version" {
     fail("expected invalid directive error")
   }
 }
+
+///|
+test "ignore unknown directives" {
+  let input =
+    #|%FOO bar baz
+    #|---
+    #|true
+    #|
+  assert_eq(parse_yaml(input), Yaml::Bool(true))
+}
