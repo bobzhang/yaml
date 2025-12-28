@@ -147,3 +147,35 @@ test "parse block scalars" {
     Yaml::Map([(Yaml::String("indented"), Yaml::String(indent_value))]),
   )
 }
+
+///|
+test "parse explicit mapping keys" {
+  let input =
+    #|? key1
+    #|: value1
+    #|? key2: value2
+    #|
+  assert_eq(
+    parse_yaml(input),
+    Yaml::Map([
+      (Yaml::String("key1"), Yaml::String("value1")),
+      (Yaml::String("key2"), Yaml::String("value2")),
+    ]),
+  )
+}
+
+///|
+test "parse explicit key with nested node" {
+  let input =
+    #|?
+    #|  - a
+    #|  - b
+    #|: 1
+    #|
+  assert_eq(
+    parse_yaml(input),
+    Yaml::Map([
+      (Yaml::Seq([Yaml::String("a"), Yaml::String("b")]), Yaml::Int(1)),
+    ]),
+  )
+}

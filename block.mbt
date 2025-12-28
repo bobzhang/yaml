@@ -167,41 +167,18 @@ fn parse_block_map(
     if line.indent != indent || !is_map_line(line, indent) {
       break
     }
-    let (key_text, value_text) = split_key_value(line)
-    let key = parse_inline_value(ctx, key_text)
-    let trimmed_value = value_text.trim_start().to_string()
-    if trimmed_value is "" {
-      let next_index = next_non_empty(lines, i + 1)
-      if next_index >= lines.length() {
-        items.push((key, Yaml::Null))
-        i = next_index
-      } else if lines[next_index].indent > indent {
-        let child_indent = lines[next_index].indent
-        let (value, next) = parse_block_node(
-          ctx, lines, next_index, child_indent,
-        )
-        items.push((key, value))
-        i = next
-      } else if is_seq_line(lines[next_index], indent) {
-        let (value, next) = parse_block_seq(ctx, lines, next_index, indent)
-        items.push((key, value))
-        i = next
-      } else {
-        items.push((key, Yaml::Null))
-        i = next_index
-      }
+    if is_explicit_key_line(line, indent) {
+      let (entry, next) = parse_explicit_entry(ctx, lines, i, indent)
+      items.push(entry)
+      i = next
     } else {
-      match try_parse_block_scalar(ctx, trimmed_value, lines, i + 1, indent) {
-        Some((node, next)) => {
-          items.push((key, node))
-          i = next
-        }
-        None => {
-          let value = parse_inline_value(ctx, trimmed_value)
-          items.push((key, value))
-          i = i + 1
-        }
-      }
+      let (key_text, value_text) = split_key_value(line)
+      let key = parse_inline_value(ctx, key_text)
+      let (value, next) = parse_value_from_text(
+        ctx, lines, i, indent, value_text,
+      )
+      items.push((key, value))
+      i = next
     }
   }
   (Yaml::Map(items), i)
@@ -235,6 +212,104 @@ fn parse_inline_value(ctx : TagContext, text : String) -> Yaml raise ParseError 
         parse_scalar_value(rest)
       }
       apply_node_props(value, tag, anchor)
+    }
+  }
+}
+
+///|
+fn parse_value_from_text(
+  ctx : TagContext,
+  lines : Array[Line],
+  line_index : Int,
+  indent : Int,
+  value_text : String,
+) -> (Yaml, Int) raise ParseError {
+  let trimmed_value = value_text.trim_start().to_string()
+  if trimmed_value is "" {
+    let next_index = next_non_empty(lines, line_index + 1)
+    if next_index >= lines.length() {
+      (Yaml::Null, next_index)
+    } else if lines[next_index].indent > indent {
+      let child_indent = lines[next_index].indent
+      parse_block_node(ctx, lines, next_index, child_indent)
+    } else if is_seq_line(lines[next_index], indent) {
+      parse_block_seq(ctx, lines, next_index, indent)
+    } else {
+      (Yaml::Null, next_index)
+    }
+  } else {
+    match
+      try_parse_block_scalar(ctx, trimmed_value, lines, line_index + 1, indent) {
+      Some((node, next)) => (node, next)
+      None => (parse_inline_value(ctx, trimmed_value), line_index + 1)
+    }
+  }
+}
+
+///|
+fn parse_explicit_entry(
+  ctx : TagContext,
+  lines : Array[Line],
+  index : Int,
+  indent : Int,
+) -> ((Yaml, Yaml), Int) raise ParseError {
+  let line = lines[index]
+  let rest = line.content
+    .view(start_offset=1)
+    .to_string()
+    .trim_start()
+    .to_string()
+  if rest is "" {
+    let next_index = next_non_empty(lines, index + 1)
+    if next_index >= lines.length() || lines[next_index].indent <= indent {
+      raise ParseError::InvalidIndent(pos={
+        line: line.number,
+        column: line.indent + 1,
+      })
+    }
+    let (key, next_after_key) = parse_block_node(
+      ctx,
+      lines,
+      next_index,
+      lines[next_index].indent,
+    )
+    let value_line = next_non_empty(lines, next_after_key)
+    if value_line < lines.length() && is_value_line(lines[value_line], indent) {
+      let value_text = lines[value_line].content
+        .view(start_offset=1)
+        .to_string()
+      let (value, next) = parse_value_from_text(
+        ctx, lines, value_line, indent, value_text,
+      )
+      ((key, value), next)
+    } else {
+      ((key, Yaml::Null), next_after_key)
+    }
+  } else {
+    match split_key_value_opt(rest) {
+      Some((key_text, value_text)) => {
+        let key = parse_inline_value(ctx, key_text)
+        let (value, next) = parse_value_from_text(
+          ctx, lines, index, indent, value_text,
+        )
+        ((key, value), next)
+      }
+      None => {
+        let key = parse_inline_value(ctx, rest)
+        let value_line = next_non_empty(lines, index + 1)
+        if value_line < lines.length() &&
+          is_value_line(lines[value_line], indent) {
+          let value_text = lines[value_line].content
+            .view(start_offset=1)
+            .to_string()
+          let (value, next) = parse_value_from_text(
+            ctx, lines, value_line, indent, value_text,
+          )
+          ((key, value), next)
+        } else {
+          ((key, Yaml::Null), index + 1)
+        }
+      }
     }
   }
 }
@@ -434,7 +509,24 @@ fn is_map_line(line : Line, indent : Int) -> Bool {
   if line.indent != indent {
     return false
   }
+  is_explicit_key_line(line, indent) ||
   split_key_value_opt(line.content) is Some(_)
+}
+
+///|
+fn is_explicit_key_line(line : Line, indent : Int) -> Bool {
+  if line.indent != indent {
+    return false
+  }
+  line.content is "?" || line.content.has_prefix("? ")
+}
+
+///|
+fn is_value_line(line : Line, indent : Int) -> Bool {
+  if line.indent != indent {
+    return false
+  }
+  line.content is ":" || line.content.has_prefix(": ")
 }
 
 ///|
