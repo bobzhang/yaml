@@ -71,6 +71,18 @@ test "tag-only line applies to following block node" {
 }
 
 ///|
+test "reject duplicate anchors" {
+  let input =
+    #|top: &a
+    #|  &b value
+    #|
+  let result : Result[Yaml, ParseError] = try? parse_yaml(input)
+  guard result is Err(ParseError::InvalidTagValue(_)) else {
+    fail("expected duplicate anchor error")
+  }
+}
+
+///|
 test "parse tags" {
   let input =
     #|v1: !tag hello
@@ -172,8 +184,8 @@ test "parse set tag" {
     Yaml::Tagged(
       tag="tag:yaml.org,2002:set",
       value=Yaml::Map([
-        (Yaml::String("a"), Yaml::Null),
-        (Yaml::String("b"), Yaml::Null),
+        (Yaml::String("a"), Yaml::String("")),
+        (Yaml::String("b"), Yaml::String("")),
       ]),
     ),
   )

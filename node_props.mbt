@@ -43,9 +43,24 @@ fn apply_node_props(
     node = Yaml::Tagged(tag=t, value=node)
   }
   if anchor is Some(a) {
+    if has_anchor(node) {
+      raise ParseError::InvalidTagValue(tag="anchor", value="<duplicate-anchor>")
+    }
     node = Yaml::Anchor(name=a, value=node)
   }
   node
+}
+
+///|
+fn has_anchor(value : Yaml) -> Bool {
+  match value {
+    Anchor(_) => true
+    Tagged(tag~, value~) => {
+      ignore(tag)
+      has_anchor(value)
+    }
+    _ => false
+  }
 }
 
 ///|
