@@ -390,6 +390,10 @@ fn try_parse_props_only(
           parse_block_node(ctx, lines, next_index, child_indent, true)
         return Some((apply_node_props(value, tag, anchor, ctx.coerce_binary), next))
       }
+      if next_line.indent == indent && is_seq_line(next_line, indent) {
+        let (value, next) = parse_block_seq(ctx, lines, next_index, indent)
+        return Some((apply_node_props(value, tag, anchor, ctx.coerce_binary), next))
+      }
       if allow_same_indent_props && next_line.indent == indent {
         let (value, next) =
           parse_block_node(ctx, lines, next_index, indent, true)

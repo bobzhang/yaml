@@ -117,6 +117,27 @@ test "parse indentless sequences" {
 }
 
 ///|
+test "parse tagged indentless sequences" {
+  let input =
+    #|sequence: !!seq
+    #|- entry
+    #|- nested
+    #|
+  assert_eq(
+    parse_yaml(input),
+    Yaml::Map([
+      (
+        Yaml::String("sequence"),
+        Yaml::Tagged(
+          tag="tag:yaml.org,2002:seq",
+          value=Yaml::Seq([Yaml::String("entry"), Yaml::String("nested")]),
+        ),
+      ),
+    ]),
+  )
+}
+
+///|
 test "parse block scalars and negatives" {
   assert_eq(parse_yaml("hello world"), Yaml::String("hello world"))
   assert_eq(parse_yaml("-1"), Yaml::Int(-1))
