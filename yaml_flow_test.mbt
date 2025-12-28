@@ -13,6 +13,14 @@ test "parse flow scalars" {
   assert_eq(parse_yaml("\"hi\""), Yaml::String("hi"))
   assert_eq(parse_yaml("'hi'"), Yaml::String("hi"))
   assert_eq(parse_yaml("\"line\\nnext\""), Yaml::String("line\nnext"))
+  assert_eq(
+    parse_yaml("[hello world]"),
+    Yaml::Seq([Yaml::String("hello world")]),
+  )
+  assert_eq(
+    parse_yaml("[http://example.com]"),
+    Yaml::Seq([Yaml::String("http://example.com")]),
+  )
 }
 
 ///|
@@ -35,6 +43,14 @@ test "parse flow collections" {
       (Yaml::String("a"), Yaml::Int(1)),
       (Yaml::String("b"), Yaml::Seq([Yaml::Bool(true), Yaml::Null])),
     ]),
+  )
+}
+
+///|
+test "parse flow explicit keys" {
+  assert_eq(
+    parse_yaml("{? a: b}"),
+    Yaml::Map([(Yaml::String("a"), Yaml::String("b"))]),
   )
 }
 

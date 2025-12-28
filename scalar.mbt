@@ -1,16 +1,4 @@
 ///|
-fn is_plain_break(c : Char) -> Bool {
-  c.is_whitespace() ||
-  c is ',' ||
-  c is ':' ||
-  c is '[' ||
-  c is ']' ||
-  c is '{' ||
-  c is '}' ||
-  c is '#'
-}
-
-///|
 fn parse_double_quoted(scanner : Scanner) -> String raise ParseError {
   scanner.expect('"')
   let sb = StringBuilder::new()
@@ -64,11 +52,11 @@ fn parse_single_quoted(scanner : Scanner) -> String raise ParseError {
 ///|
 fn parse_plain_scalar(scanner : Scanner) -> String raise ParseError {
   let sb = StringBuilder::new()
-  while scanner.peek() is Some(c) && !is_plain_break(c) {
+  while scanner.peek() is Some(c) && !is_flow_plain_break(scanner, c) {
     ignore(scanner.advance())
     sb.write_char(c)
   }
-  let raw = sb.to_string()
+  let raw = sb.to_string().trim_end().to_string()
   if raw is "" {
     match scanner.peek() {
       None => raise ParseError::UnexpectedEof(pos=scanner.position())
@@ -77,6 +65,28 @@ fn parse_plain_scalar(scanner : Scanner) -> String raise ParseError {
     }
   }
   raw
+}
+
+///|
+fn is_flow_plain_break(scanner : Scanner, c : Char) -> Bool {
+  if c is '\n' || c is '\r' || c is '\t' {
+    return true
+  }
+  if c is ',' || c is ']' || c is '}' || c is '[' || c is '{' {
+    return true
+  }
+  if c is '#' {
+    return true
+  }
+  if c is ':' {
+    match scanner.peek_next() {
+      None => true
+      Some(next) =>
+        next.is_whitespace() || next is ',' || next is ']' || next is '}'
+    }
+  } else {
+    false
+  }
 }
 
 ///|

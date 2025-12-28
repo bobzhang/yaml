@@ -192,3 +192,12 @@ test "parse multiline plain scalars" {
     Yaml::Map([(Yaml::String("key"), Yaml::String("line1 line2 line3"))]),
   )
 }
+
+///|
+test "parse multiline plain scalars in sequences" {
+  let input =
+    #|- line1
+    #|  line2
+    #|
+  assert_eq(parse_yaml(input), Yaml::Seq([Yaml::String("line1 line2")]))
+}

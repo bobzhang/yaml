@@ -137,8 +137,11 @@ fn parse_block_seq(
             items.push(value)
             i = i + next
           } else {
-            items.push(parse_inline_value(ctx, rest))
-            i = i + 1
+            let (value, next) = parse_value_from_text(
+              ctx, lines, i, indent, rest,
+            )
+            items.push(value)
+            i = next
           }
       }
     }

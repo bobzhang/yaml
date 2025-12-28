@@ -78,12 +78,23 @@ fn parse_flow_map(ctx : TagContext, scanner : Scanner) -> Yaml raise ParseError 
     return Yaml::Map(items)
   }
   while true {
-    let key = parse_flow_node(ctx, scanner)
-    scanner.skip_ws_and_comments()
-    scanner.expect(':')
-    scanner.skip_ws_and_comments()
-    let value = parse_flow_node(ctx, scanner)
-    items.push((key, value))
+    if is_flow_explicit_key(scanner) {
+      ignore(scanner.advance())
+      scanner.skip_ws_and_comments()
+      let key = parse_flow_node(ctx, scanner)
+      scanner.skip_ws_and_comments()
+      scanner.expect(':')
+      scanner.skip_ws_and_comments()
+      let value = parse_flow_node(ctx, scanner)
+      items.push((key, value))
+    } else {
+      let key = parse_flow_node(ctx, scanner)
+      scanner.skip_ws_and_comments()
+      scanner.expect(':')
+      scanner.skip_ws_and_comments()
+      let value = parse_flow_node(ctx, scanner)
+      items.push((key, value))
+    }
     scanner.skip_ws_and_comments()
     if scanner.eat('}') {
       break
@@ -95,4 +106,16 @@ fn parse_flow_map(ctx : TagContext, scanner : Scanner) -> Yaml raise ParseError 
     }
   }
   Yaml::Map(items)
+}
+
+///|
+fn is_flow_explicit_key(scanner : Scanner) -> Bool {
+  match scanner.peek() {
+    Some('?') =>
+      match scanner.peek_next() {
+        Some(next) => next.is_whitespace()
+        None => false
+      }
+    _ => false
+  }
 }

@@ -27,6 +27,14 @@ fn Scanner::peek(self : Scanner) -> Char? {
 }
 
 ///|
+fn Scanner::peek_next(self : Scanner) -> Char? {
+  match self.peek() {
+    None => None
+    Some(c) => self.input.get_char(self.pos + c.utf16_len())
+  }
+}
+
+///|
 fn Scanner::advance(self : Scanner) -> Char? {
   match self.peek() {
     None => None
