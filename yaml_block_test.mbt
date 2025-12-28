@@ -107,6 +107,15 @@ test "parse block scalars and negatives" {
 }
 
 ///|
+test "parse top-level multiline plain scalars" {
+  let input =
+    #|hello
+    #|world
+    #|
+  assert_eq(parse_yaml(input), Yaml::String("hello world"))
+}
+
+///|
 test "parse block scalars" {
   let literal_input =
     #|literal: |

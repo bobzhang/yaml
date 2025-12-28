@@ -302,6 +302,7 @@ fn parse_value_from_text(
             lines,
             line_index + 1,
             indent,
+            allow_same_indent_props,
           )
           if parts.length() > 0 {
             let joined = fold_plain_lines(trimmed_value, parts)
@@ -350,7 +351,7 @@ fn try_parse_props_only(
       }
       if allow_same_indent_props && next_line.indent == indent {
         let (value, next) =
-          parse_block_node(ctx, lines, next_index, indent, false)
+          parse_block_node(ctx, lines, next_index, indent, true)
         return Some((apply_node_props(value, tag, anchor), next))
       }
     }
@@ -526,17 +527,25 @@ fn collect_plain_continuation(
   lines : Array[Line],
   index : Int,
   indent : Int,
+  allow_same_indent : Bool,
 ) -> (Array[String], Int) raise ParseError {
   let parts : Array[String] = []
   let mut i = index
   let mut base_indent : Int? = None
   while i < lines.length() {
     let line = lines[i]
-    if line.indent <= indent {
+    if allow_same_indent {
+      if line.indent < indent {
+        break
+      }
+    } else if line.indent <= indent {
       break
     }
     let raw = line.raw.view(start_offset=line.indent).to_string()
     if raw.trim() is "" {
+      if is_trailing_blank(lines, i) {
+        break
+      }
       parts.push("")
       i = i + 1
       continue
@@ -559,6 +568,18 @@ fn collect_plain_continuation(
     i = i + 1
   }
   (parts, i)
+}
+
+///|
+fn is_trailing_blank(lines : Array[Line], start : Int) -> Bool {
+  let mut i = start
+  while i < lines.length() {
+    if lines[i].content != "" {
+      return false
+    }
+    i = i + 1
+  }
+  true
 }
 
 ///|
