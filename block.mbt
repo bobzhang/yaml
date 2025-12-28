@@ -317,6 +317,10 @@ fn parse_value_from_text(
         collect_quoted_multiline(lines, line_index, '\'', trimmed_value)
       return (parse_inline_value(ctx, combined), next)
     }
+    match try_parse_quoted_props(ctx, trimmed_value, lines, line_index) {
+      Some((node, next)) => return (node, next)
+      None => ()
+    }
     match
       try_parse_props_only(
         ctx,
@@ -393,6 +397,48 @@ fn try_parse_props_only(
       }
     }
     return Some((apply_node_props(Yaml::Null, tag, anchor), line_index + 1))
+  }
+  None
+}
+
+///|
+fn try_parse_quoted_props(
+  ctx : TagContext,
+  text : String,
+  lines : Array[Line],
+  line_index : Int,
+) -> (Yaml, Int)? raise ParseError {
+  let scanner = Scanner::new(text)
+  scanner.skip_ws_and_comments()
+  if parse_alias(scanner) is Some(_) {
+    return None
+  }
+  let (tag, anchor) = parse_node_props(ctx, scanner)
+  scanner.skip_ws_and_comments()
+  let rest = text
+    .view(start_offset=scanner.offset())
+    .to_string()
+    .trim_start()
+    .to_string()
+  if rest.has_prefix("\"") && !is_terminated_double(rest) {
+    let (combined, next) = collect_quoted_multiline(
+      lines,
+      line_index,
+      '"',
+      rest,
+    )
+    let value = parse_flow_value_from_string(ctx, combined)
+    return Some((apply_node_props(value, tag, anchor), next))
+  }
+  if rest.has_prefix("'") && !is_terminated_single(rest) {
+    let (combined, next) = collect_quoted_multiline(
+      lines,
+      line_index,
+      '\'',
+      rest,
+    )
+    let value = parse_flow_value_from_string(ctx, combined)
+    return Some((apply_node_props(value, tag, anchor), next))
   }
   None
 }

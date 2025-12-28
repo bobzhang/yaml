@@ -192,6 +192,23 @@ test "parse set tag" {
 }
 
 ///|
+test "parse tagged multiline quoted scalar" {
+  let input =
+    #|value: !!str "a
+    #|  b"
+    #|
+  assert_eq(
+    parse_yaml(input),
+    Yaml::Map([
+      (
+        Yaml::String("value"),
+        Yaml::Tagged(tag="tag:yaml.org,2002:str", value=Yaml::String("a b")),
+      ),
+    ]),
+  )
+}
+
+///|
 test "reject invalid set tag" {
   let input = "!!set {a: 1}"
   let result : Result[Yaml, ParseError] = try? parse_yaml(input)
