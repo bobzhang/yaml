@@ -101,6 +101,12 @@ test "parse flow collections" {
     parse_yaml("{hello world: 1}"),
     Yaml::Map([(Yaml::String("hello world"), Yaml::Int(1))]),
   )
+  assert_eq(
+    parse_yaml("[a: 1]"),
+    Yaml::Seq([
+      Yaml::Map([(Yaml::String("a"), Yaml::Int(1))]),
+    ]),
+  )
 }
 
 ///|
