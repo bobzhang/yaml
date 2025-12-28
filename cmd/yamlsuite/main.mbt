@@ -123,8 +123,15 @@ fn yaml_to_json_value(value : @yaml.Yaml) -> Json raise @yaml.ParseError {
       yaml_to_json_value(value)
     }
     Tagged(tag~, value~) => {
-      ignore(tag)
-      yaml_to_json_value(value)
+      if is_set_tag(tag) {
+        match value {
+          Map(items) => set_map_to_json(items)
+          _ => yaml_to_json_value(value)
+        }
+      } else {
+        ignore(tag)
+        yaml_to_json_value(value)
+      }
     }
     Alias(name) =>
       raise @yaml.ParseError::InvalidTagValue(tag="alias", value=name)
@@ -149,6 +156,33 @@ fn map_to_json(
     }
   }
   Json::object(obj)
+}
+
+///|
+fn set_map_to_json(
+  items : Array[(@yaml.Yaml, @yaml.Yaml)],
+) -> Json raise @yaml.ParseError {
+  let obj : Map[String, Json] = {}
+  for pair in items {
+    let (key, _value) = pair
+    let key_value = strip_props(key)
+    match key_value {
+      String(s) => obj[s] = Json::null()
+      _ =>
+        raise @yaml.ParseError::InvalidTagValue(
+          tag="json",
+          value="non-string key",
+        )
+    }
+  }
+  Json::object(obj)
+}
+
+///|
+fn is_set_tag(tag : String) -> Bool {
+  tag is "tag:yaml.org,2002:set" ||
+  tag is "!!set" ||
+  tag is "!<tag:yaml.org,2002:set>"
 }
 
 ///|

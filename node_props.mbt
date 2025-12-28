@@ -154,7 +154,7 @@ fn validate_tagged_set(tag : String, value : Yaml) -> Yaml raise ParseError {
   match value {
     Map(items) => {
       for pair in items {
-        if pair.1 != Yaml::Null {
+        if pair.1 != Yaml::Null && pair.1 != Yaml::String("") {
           raise ParseError::InvalidTagValue(tag~, value="<non-null>")
         }
       }

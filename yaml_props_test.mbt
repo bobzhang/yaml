@@ -52,6 +52,25 @@ test "anchors allow colons in names" {
 }
 
 ///|
+test "tag-only line applies to following block node" {
+  let input =
+    #|!!set
+    #|? Mark McGwire
+    #|? Sammy Sosa
+    #|
+  assert_eq(
+    parse_yaml(input),
+    Yaml::Tagged(
+      tag="tag:yaml.org,2002:set",
+      value=Yaml::Map([
+        (Yaml::String("Mark McGwire"), Yaml::String("")),
+        (Yaml::String("Sammy Sosa"), Yaml::String("")),
+      ]),
+    ),
+  )
+}
+
+///|
 test "parse tags" {
   let input =
     #|v1: !tag hello
