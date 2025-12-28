@@ -1,5 +1,5 @@
 ///|
-fn decode_base64(tag : String, raw : String) -> Bytes raise ParseError {
+pub fn decode_base64(tag : String, raw : String) -> Bytes raise ParseError {
   let values : Array[Int] = []
   let mut seen_pad = false
   for c in raw {
@@ -68,6 +68,49 @@ fn decode_base64(tag : String, raw : String) -> Bytes raise ParseError {
     i = i + 4
   }
   Bytes::from_array(out)
+}
+
+///|
+pub fn encode_base64(bytes : Bytes) -> String {
+  let alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+  let sb = StringBuilder::new()
+  let len = bytes.length()
+  let mut i = 0
+  while i + 2 < len {
+    let b0 = bytes[i].to_int()
+    let b1 = bytes[i + 1].to_int()
+    let b2 = bytes[i + 2].to_int()
+    let x0 = (b0 & 0xfc) >> 2
+    let x1 = ((b0 & 0x03) << 4) | ((b1 & 0xf0) >> 4)
+    let x2 = ((b1 & 0x0f) << 2) | ((b2 & 0xc0) >> 6)
+    let x3 = b2 & 0x3f
+    sb.write_char(alphabet.get_char(x0).unwrap())
+    sb.write_char(alphabet.get_char(x1).unwrap())
+    sb.write_char(alphabet.get_char(x2).unwrap())
+    sb.write_char(alphabet.get_char(x3).unwrap())
+    i = i + 3
+  }
+  let rem = len - i
+  if rem == 1 {
+    let b0 = bytes[i].to_int()
+    let x0 = (b0 & 0xfc) >> 2
+    let x1 = (b0 & 0x03) << 4
+    sb.write_char(alphabet.get_char(x0).unwrap())
+    sb.write_char(alphabet.get_char(x1).unwrap())
+    sb.write_char('=')
+    sb.write_char('=')
+  } else if rem == 2 {
+    let b0 = bytes[i].to_int()
+    let b1 = bytes[i + 1].to_int()
+    let x0 = (b0 & 0xfc) >> 2
+    let x1 = ((b0 & 0x03) << 4) | ((b1 & 0xf0) >> 4)
+    let x2 = (b1 & 0x0f) << 2
+    sb.write_char(alphabet.get_char(x0).unwrap())
+    sb.write_char(alphabet.get_char(x1).unwrap())
+    sb.write_char(alphabet.get_char(x2).unwrap())
+    sb.write_char('=')
+  }
+  sb.to_string()
 }
 
 ///|

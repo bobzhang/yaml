@@ -2,9 +2,15 @@
 package "local/yaml"
 
 // Values
+pub fn decode_base64(String, String) -> Bytes raise ParseError
+
+pub fn encode_base64(Bytes) -> String
+
 pub fn parse_yaml(String) -> Yaml raise ParseError
 
 pub fn parse_yaml_stream(String) -> Array[Yaml] raise ParseError
+
+pub fn parse_yaml_stream_raw(String) -> Array[Yaml] raise ParseError
 
 pub fn resolve_aliases(Yaml) -> Yaml raise ParseError
 
