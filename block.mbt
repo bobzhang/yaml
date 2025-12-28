@@ -240,7 +240,7 @@ fn parse_inline_value(ctx : TagContext, text : String) -> Yaml raise ParseError 
 }
 
 ///|
-fn parse_block_indicator(text : String) -> (Char, Chomp)? {
+fn parse_block_indicator(text : String) -> (Char, Chomp, Int?)? {
   let trimmed = text.trim().to_string()
   if trimmed is "" {
     return None
@@ -250,17 +250,23 @@ fn parse_block_indicator(text : String) -> (Char, Chomp)? {
   if !(style is '|' || style is '>') {
     return None
   }
-  if chars.length() == 1 {
-    return Some((style, Chomp::Clip))
+  let mut chomp = Chomp::Clip
+  let mut indent : Int? = None
+  let mut i = 1
+  while i < chars.length() {
+    let c = chars[i]
+    if c is '+' {
+      chomp = Chomp::Keep
+    } else if c is '-' {
+      chomp = Chomp::Strip
+    } else if c.is_ascii_digit() {
+      indent = Some(c.to_int() - '0'.to_int())
+    } else {
+      break
+    }
+    i = i + 1
   }
-  let modifier = chars[1]
-  if modifier is '+' {
-    Some((style, Chomp::Keep))
-  } else if modifier is '-' {
-    Some((style, Chomp::Strip))
-  } else {
-    None
-  }
+  Some((style, chomp, indent))
 }
 
 ///|
@@ -285,9 +291,9 @@ fn try_parse_block_scalar(
     .to_string()
   match parse_block_indicator(tail) {
     None => None
-    Some((style, chomp)) => {
+    Some((style, chomp, indent_hint)) => {
       let (value, next) = parse_block_scalar(
-        lines, index, parent_indent, style, chomp,
+        lines, index, parent_indent, style, chomp, indent_hint,
       )
       Some((apply_node_props(Yaml::String(value), tag, anchor), next))
     }
@@ -301,6 +307,7 @@ fn parse_block_scalar(
   parent_indent : Int,
   style : Char,
   chomp : Chomp,
+  indent_hint : Int?,
 ) -> (String, Int) {
   let mut i = index
   let mut content_indent : Int? = None
@@ -318,7 +325,10 @@ fn parse_block_scalar(
       break
     }
     if content_indent is None {
-      content_indent = Some(line.indent)
+      content_indent = match indent_hint {
+        None => Some(line.indent)
+        Some(hint) => Some(parent_indent + hint)
+      }
     }
     let indent = content_indent.unwrap_or(line.indent)
     if line.indent < indent {

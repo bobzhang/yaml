@@ -133,4 +133,17 @@ test "parse block scalars" {
     parse_yaml(keep_input),
     Yaml::Map([(Yaml::String("keep"), Yaml::String(keep_value))]),
   )
+  let indent_input =
+    #|indented: |2
+    #|  a
+    #|  b
+    #|
+  let indent_value =
+    #|a
+    #|b
+    #|
+  assert_eq(
+    parse_yaml(indent_input),
+    Yaml::Map([(Yaml::String("indented"), Yaml::String(indent_value))]),
+  )
 }
