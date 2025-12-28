@@ -179,3 +179,16 @@ test "parse explicit key with nested node" {
     ]),
   )
 }
+
+///|
+test "parse multiline plain scalars" {
+  let input =
+    #|key: line1
+    #|  line2
+    #|  line3
+    #|
+  assert_eq(
+    parse_yaml(input),
+    Yaml::Map([(Yaml::String("key"), Yaml::String("line1 line2 line3"))]),
+  )
+}

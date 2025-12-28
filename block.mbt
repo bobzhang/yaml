@@ -241,7 +241,24 @@ fn parse_value_from_text(
     match
       try_parse_block_scalar(ctx, trimmed_value, lines, line_index + 1, indent) {
       Some((node, next)) => (node, next)
-      None => (parse_inline_value(ctx, trimmed_value), line_index + 1)
+      None => {
+        let value = parse_inline_value(ctx, trimmed_value)
+        if value is String(_) && is_plain_scalar_start(trimmed_value) {
+          let (parts, next) = collect_plain_continuation(
+            lines,
+            line_index + 1,
+            indent,
+          )
+          if parts.length() > 0 {
+            let joined = fold_plain_lines(trimmed_value, parts)
+            (Yaml::String(joined), next)
+          } else {
+            (value, line_index + 1)
+          }
+        } else {
+          (value, line_index + 1)
+        }
+      }
     }
   }
 }
@@ -312,6 +329,68 @@ fn parse_explicit_entry(
       }
     }
   }
+}
+
+///|
+fn is_plain_scalar_start(text : String) -> Bool {
+  if text is "" {
+    return false
+  }
+  let trimmed = text.trim_start().to_string()
+  !(trimmed.has_prefix("\"") ||
+  trimmed.has_prefix("'") ||
+  trimmed.has_prefix("[") ||
+  trimmed.has_prefix("{") ||
+  trimmed.has_prefix("!") ||
+  trimmed.has_prefix("&") ||
+  trimmed.has_prefix("*"))
+}
+
+///|
+fn collect_plain_continuation(
+  lines : Array[Line],
+  index : Int,
+  indent : Int,
+) -> (Array[String], Int) {
+  let parts : Array[String] = []
+  let mut i = index
+  while i < lines.length() {
+    let line = lines[i]
+    if line.indent <= indent {
+      break
+    }
+    let raw = line.raw.view(start_offset=line.indent).to_string()
+    if is_structured_start(raw) {
+      break
+    }
+    parts.push(raw.trim_end().to_string())
+    i = i + 1
+  }
+  (parts, i)
+}
+
+///|
+fn is_structured_start(raw : String) -> Bool {
+  let trimmed = raw.trim().to_string()
+  if trimmed is "" {
+    return false
+  }
+  if trimmed is "-" || trimmed.has_prefix("- ") {
+    return true
+  }
+  if trimmed is "?" || trimmed.has_prefix("? ") {
+    return true
+  }
+  split_key_value_opt(trimmed) is Some(_)
+}
+
+///|
+fn fold_plain_lines(first : String, rest : Array[String]) -> String {
+  let all : Array[String] = [first]
+  for line in rest {
+    all.push(line)
+  }
+  fold_lines(all)
 }
 
 ///|
