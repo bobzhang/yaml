@@ -12,6 +12,7 @@ pub(all) suberror ParseError {
   InvalidNumber(pos~ : Position, value~ : String)
   InvalidEscape(pos~ : Position, value~ : String)
   UnknownAnchor(name~ : String)
+  MultipleDocuments(count~ : Int)
   NotImplemented(feature~ : String)
 } derive(Eq, Show, ToJson)
 
