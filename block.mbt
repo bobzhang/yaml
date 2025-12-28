@@ -1307,7 +1307,8 @@ fn parse_block_scalar(
       i = i + 1
       continue
     }
-    if content_indent is None && line.indent < parent_indent {
+    if content_indent is None && line.indent <= parent_indent {
+      pending_blank = 0
       break
     }
     if content_indent is None {
@@ -1339,8 +1340,10 @@ fn parse_block_scalar(
     collected.push(text)
     i = i + 1
   }
-  for _ in 0..<pending_blank {
-    collected.push("")
+  if content_indent is Some(_) {
+    for _ in 0..<pending_blank {
+      collected.push("")
+    }
   }
   let base = if style is '|' {
     join_lines(collected)
@@ -1419,7 +1422,18 @@ fn fold_block_lines(lines : Array[String]) -> String {
       if is_blank {
         sb.write_char('\n')
       } else if next_blank {
-        if is_more {
+        let mut j = idx + 1
+        let mut more_after = false
+        while j < lines.length() {
+          let candidate = lines[j]
+          if candidate is "" {
+            j = j + 1
+            continue
+          }
+          more_after = candidate.has_prefix(" ") || candidate.has_prefix("\t")
+          break
+        }
+        if is_more || more_after {
           sb.write_char('\n')
         }
       } else if is_more || next_more {
