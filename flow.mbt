@@ -124,7 +124,7 @@ fn parse_flow_map(ctx : TagContext, scanner : Scanner) -> Yaml raise ParseError 
       } else {
         parse_flow_node(ctx, scanner)
       }
-      items.push((Yaml::Null, value))
+      items.push((Yaml::String(""), value))
     } else {
       let key = parse_flow_node(ctx, scanner)
       scanner.skip_ws_and_comments()

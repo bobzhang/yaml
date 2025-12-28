@@ -16,6 +16,25 @@ test "parse block maps" {
 }
 
 ///|
+test "parse empty mapping keys" {
+  let input =
+    #|: a
+    #|: b
+    #|
+  let docs = parse_yaml_stream_raw(input)
+  guard docs.length() == 1 else {
+    fail("expected single doc")
+  }
+  assert_eq(
+    docs[0],
+    Yaml::Map([
+      (Yaml::String(""), Yaml::String("a")),
+      (Yaml::String(""), Yaml::String("b")),
+    ]),
+  )
+}
+
+///|
 test "parse bom at start" {
   let input = "\u{feff}a: 1"
   assert_eq(

@@ -176,14 +176,14 @@ fn parse_block_map(
       i = next
     } else if split_key_value_opt(line.content) is Some(_) {
       let (key_text, value_text) = split_key_value(line)
-      let key = parse_inline_value(ctx, key_text)
+      let key = parse_inline_key(ctx, key_text)
       let (value, next) = parse_value_from_text(
         ctx, lines, i, indent, value_text,
       )
       items.push((key, value))
       i = next
     } else if is_value_line_after(lines, i, indent) {
-      let key = parse_inline_value(ctx, line.content)
+      let key = parse_inline_key(ctx, line.content)
       let value_line = next_non_empty(lines, i + 1)
       let value_text = lines[value_line].content
         .view(start_offset=1)
@@ -231,6 +231,16 @@ fn parse_inline_value(ctx : TagContext, text : String) -> Yaml raise ParseError 
       }
       apply_node_props(value, tag, anchor)
     }
+  }
+}
+
+///|
+fn parse_inline_key(ctx : TagContext, text : String) -> Yaml raise ParseError {
+  let trimmed = text.trim().to_string()
+  if trimmed is "" {
+    Yaml::String("")
+  } else {
+    parse_inline_value(ctx, text)
   }
 }
 
@@ -449,14 +459,14 @@ fn parse_explicit_entry(
   } else {
     match split_key_value_opt(rest) {
       Some((key_text, value_text)) => {
-        let key = parse_inline_value(ctx, key_text)
+        let key = parse_inline_key(ctx, key_text)
         let (value, next) = parse_value_from_text(
           ctx, lines, index, indent, value_text,
         )
         ((key, value), next)
       }
       None => {
-        let key = parse_inline_value(ctx, rest)
+        let key = parse_inline_key(ctx, rest)
         let value_line = next_non_empty(lines, index + 1)
         if value_line < lines.length() &&
           is_value_line(lines[value_line], indent) {
