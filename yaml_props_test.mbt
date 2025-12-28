@@ -29,6 +29,29 @@ test "anchors allow punctuation" {
 }
 
 ///|
+test "anchors allow colons in names" {
+  let input =
+    #|&a: key: &a value
+    #|foo:
+    #|  *a:
+    #|
+  let docs = parse_yaml_stream_raw(input)
+  guard docs.length() == 1 else {
+    fail("expected single doc")
+  }
+  assert_eq(
+    docs[0],
+    Yaml::Map([
+      (
+        Yaml::Anchor(name="a:", value=Yaml::String("key")),
+        Yaml::Anchor(name="a", value=Yaml::String("value")),
+      ),
+      (Yaml::String("foo"), Yaml::Alias("a:")),
+    ]),
+  )
+}
+
+///|
 test "parse tags" {
   let input =
     #|v1: !tag hello

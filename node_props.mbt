@@ -293,7 +293,6 @@ fn is_anchor_break(c : Char) -> Bool {
   c is '}' ||
   c is ',' ||
   c is '?' ||
-  c is ':' ||
   c is '#' ||
   c is '&' ||
   c is '*' ||

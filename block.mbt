@@ -861,6 +861,20 @@ fn split_key_value_opt(content : String) -> (String, String)? {
   let mut prev_space = true
   while i < chars.length() {
     let c = chars[i]
+    if prev_space && (c is '&' || c is '!' || c is '*') {
+      key_sb.write_char(c)
+      i = i + 1
+      while i < chars.length() {
+        let ch = chars[i]
+        if ch.is_whitespace() || ch is ',' || ch is ']' || ch is '}' || ch is '#' {
+          break
+        }
+        key_sb.write_char(ch)
+        i = i + 1
+      }
+      prev_space = false
+      continue
+    }
     if in_single {
       if c is '\'' {
         in_single = false
