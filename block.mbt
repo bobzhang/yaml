@@ -219,6 +219,13 @@ fn parse_block_map(
     } else if split_key_value_opt(line.content) is Some(_) {
       let (key_text, value_text) = split_key_value(line)
       let key = parse_inline_key(ctx, key_text)
+      let trimmed_value = value_text.trim_start().to_string()
+      if trimmed_value.has_prefix("- ") {
+        raise ParseError::InvalidIndent(pos={
+          line: line.number,
+          column: line.indent + 1,
+        })
+      }
       let (value, next) =
         parse_value_from_text(ctx, lines, i, indent, value_text, false)
       items.push((key, value))

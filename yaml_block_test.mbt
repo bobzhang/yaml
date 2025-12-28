@@ -138,6 +138,18 @@ test "parse tagged indentless sequences" {
 }
 
 ///|
+test "reject inline sequence after key" {
+  let input =
+    #|key: - a
+    #|     - b
+    #|
+  let result : Result[Yaml, ParseError] = try? parse_yaml(input)
+  guard result is Err(ParseError::InvalidIndent(_)) else {
+    fail("expected invalid indent error")
+  }
+}
+
+///|
 test "parse block scalars and negatives" {
   assert_eq(parse_yaml("hello world"), Yaml::String("hello world"))
   assert_eq(parse_yaml("-1"), Yaml::Int(-1))
