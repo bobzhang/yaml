@@ -130,7 +130,21 @@ fn parse_block_seq(
           i = next
         }
         None =>
-          if split_key_value_opt(rest) is Some(_) {
+          if rest is "-" || rest.has_prefix("- ") {
+            let virtual_line = {
+              number: line.number,
+              indent: indent + 2,
+              raw: rest,
+              content: rest,
+            }
+            let temp : Array[Line] = [virtual_line]
+            for j in (i + 1)..<lines.length() {
+              temp.push(lines[j])
+            }
+            let (value, next) = parse_block_seq(ctx, temp, 0, indent + 2)
+            items.push(value)
+            i = i + next
+          } else if split_key_value_opt(rest) is Some(_) {
             let virtual_line = {
               number: line.number,
               indent: indent + 2,
