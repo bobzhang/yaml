@@ -80,12 +80,11 @@ fn extract_directives(
   input : String,
   coerce_binary : Bool,
 ) -> (TagContext, String) raise ParseError {
-  let ctx =
-    if coerce_binary {
-      TagContext::new()
-    } else {
-      TagContext::new_raw()
-    }
+  let ctx = if coerce_binary {
+    TagContext::new()
+  } else {
+    TagContext::new_raw()
+  }
   let normalized = input
     .replace_all(old="\r\n", new="\n")
     .replace_all(old="\r", new="\n")
@@ -229,9 +228,7 @@ fn split_documents(input : String) -> Array[String] raise ParseError {
           detail="directive without document start",
         )
       } else {
-        raise ParseError::InvalidDirective(
-          detail="directive without document",
-        )
+        raise ParseError::InvalidDirective(detail="directive without document")
       }
     }
   }

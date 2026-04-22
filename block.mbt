@@ -44,13 +44,7 @@ fn make_virtual_line(number : Int, indent : Int, content : String) -> Line {
     sb.write_char(' ')
   }
   sb.write_string(content)
-  {
-    number,
-    indent,
-    has_tab_indent: false,
-    raw: sb.to_string(),
-    content,
-  }
+  { number, indent, has_tab_indent: false, raw: sb.to_string(), content }
 }
 
 ///|
@@ -111,8 +105,7 @@ fn parse_block_document(
     return Yaml::Null
   }
   let first = lines[start]
-  let (value, next) =
-    parse_block_node(ctx, lines, start, first.indent, true)
+  let (value, next) = parse_block_node(ctx, lines, start, first.indent, true)
   let rest = next_non_empty(lines, next)
   if rest < lines.length() {
     let line = lines[rest]
@@ -149,7 +142,8 @@ fn parse_block_node(
   }
   let line_indent = block_indent(line)
   let line_content = block_content(line)
-  if indicator_has_tab(line_content, '?') || indicator_has_tab(line_content, ':') {
+  if indicator_has_tab(line_content, '?') ||
+    indicator_has_tab(line_content, ':') {
     raise ParseError::InvalidIndent(pos={
       line: line.number,
       column: line.indent + 1,
@@ -167,12 +161,7 @@ fn parse_block_node(
     parse_block_map(ctx, lines, start, indent)
   } else {
     parse_value_from_text(
-      ctx,
-      lines,
-      start,
-      indent,
-      line_content,
-      allow_same_indent_props,
+      ctx, lines, start, indent, line_content, allow_same_indent_props,
     )
   }
 }
@@ -230,8 +219,9 @@ fn parse_block_seq(
         i = next_index
       } else {
         let child_indent = block_indent(lines[next_index])
-        let (value, next) =
-          parse_block_node(ctx, lines, next_index, child_indent, true)
+        let (value, next) = parse_block_node(
+          ctx, lines, next_index, child_indent, true,
+        )
         items.push(value)
         i = next
       }
@@ -248,54 +238,67 @@ fn parse_block_seq(
               if next_index < lines.length() &&
                 block_indent(lines[next_index]) > indent {
                 let child_indent = block_indent(lines[next_index])
-                let (value, next) =
-                  parse_block_node(ctx, lines, next_index, child_indent, true)
+                let (value, next) = parse_block_node(
+                  ctx, lines, next_index, child_indent, true,
+                )
                 items.push(
                   apply_node_props(value, tag, anchor, ctx.coerce_binary),
                 )
                 i = next
               } else {
                 items.push(
-                  apply_node_props(
-                    Yaml::Null,
-                    tag,
-                    anchor,
-                    ctx.coerce_binary,
-                  ),
+                  apply_node_props(Yaml::Null, tag, anchor, ctx.coerce_binary),
                 )
                 i = i + 1
               }
             }
             None =>
               if rest is "-" || rest.has_prefix("- ") {
-                let virtual_indent =
-                  inline_virtual_indent_seq(lines, i, indent, indent + 2)
-                let virtual_line =
-                  make_virtual_line(line.number, virtual_indent, rest)
+                let virtual_indent = inline_virtual_indent_seq(
+                  lines,
+                  i,
+                  indent,
+                  indent + 2,
+                )
+                let virtual_line = make_virtual_line(
+                  line.number,
+                  virtual_indent,
+                  rest,
+                )
                 let temp : Array[Line] = [virtual_line]
                 for j in (i + 1)..<lines.length() {
                   temp.push(lines[j])
                 }
-                let (value, next) =
-                  parse_block_seq(ctx, temp, 0, virtual_indent)
+                let (value, next) = parse_block_seq(
+                  ctx, temp, 0, virtual_indent,
+                )
                 items.push(value)
                 i = i + next
               } else if split_key_value_opt(rest) is Some(_) {
-                let virtual_indent =
-                  inline_virtual_indent_map(lines, i, indent, indent + 2)
-                let virtual_line =
-                  make_virtual_line(line.number, virtual_indent, rest)
+                let virtual_indent = inline_virtual_indent_map(
+                  lines,
+                  i,
+                  indent,
+                  indent + 2,
+                )
+                let virtual_line = make_virtual_line(
+                  line.number,
+                  virtual_indent,
+                  rest,
+                )
                 let temp : Array[Line] = [virtual_line]
                 for j in (i + 1)..<lines.length() {
                   temp.push(lines[j])
                 }
-                let (value, next) =
-                  parse_block_map(ctx, temp, 0, virtual_indent)
+                let (value, next) = parse_block_map(
+                  ctx, temp, 0, virtual_indent,
+                )
                 items.push(value)
                 i = i + next
               } else {
-                let (value, next) =
-                  parse_value_from_text(ctx, lines, i, indent, rest, false)
+                let (value, next) = parse_value_from_text(
+                  ctx, lines, i, indent, rest, false,
+                )
                 items.push(value)
                 i = next
               }
@@ -329,7 +332,8 @@ fn parse_block_map(
         column: line.indent + 1,
       })
     }
-    if indicator_has_tab(line_content, '?') || indicator_has_tab(line_content, ':') {
+    if indicator_has_tab(line_content, '?') ||
+      indicator_has_tab(line_content, ':') {
       raise ParseError::InvalidIndent(pos={
         line: line.number,
         column: line.indent + 1,
@@ -362,16 +366,18 @@ fn parse_block_map(
           found=':',
         )
       }
-      let (value, next) =
-        parse_value_from_text(ctx, lines, i, indent, value_text, false)
+      let (value, next) = parse_value_from_text(
+        ctx, lines, i, indent, value_text, false,
+      )
       items.push((key, value))
       i = next
     } else if is_value_line_after(lines, i, indent) {
       let key = parse_inline_key(ctx, line_content)
       let value_line = next_non_empty(lines, i + 1)
       let value_text = drop_first_char(block_content(lines[value_line]))
-      let (value, next) =
-        parse_value_from_text(ctx, lines, value_line, indent, value_text, false)
+      let (value, next) = parse_value_from_text(
+        ctx, lines, value_line, indent, value_text, false,
+      )
       items.push((key, value))
       i = next
     } else if !is_map_line(line, indent) {
@@ -436,8 +442,9 @@ fn parse_inline_node_multiline(
   let trimmed = text.trim().to_string()
   let mut inline_comment = false
   if line_index < lines.length() {
-    let raw_line =
-      lines[line_index].raw.view(start_offset=lines[line_index].indent).to_string()
+    let raw_line = lines[line_index].raw
+      .view(start_offset=lines[line_index].indent)
+      .to_string()
     let stripped = strip_inline_comment(raw_line)
     if stripped.length() < raw_line.length() {
       inline_comment = true
@@ -465,13 +472,22 @@ fn parse_inline_node_multiline(
       let has_props = tag is Some(_) || anchor is Some(_)
       if rest is "" {
         let value = Yaml::Null
-        (apply_node_props(value, tag, anchor, ctx.coerce_binary), line_index + 1)
+        (
+          apply_node_props(value, tag, anchor, ctx.coerce_binary),
+          line_index + 1,
+        )
       } else if rest.has_prefix("[") || rest.has_prefix("{") {
         let value = parse_flow_value_from_string(ctx, rest)
-        (apply_node_props(value, tag, anchor, ctx.coerce_binary), line_index + 1)
+        (
+          apply_node_props(value, tag, anchor, ctx.coerce_binary),
+          line_index + 1,
+        )
       } else if rest.has_prefix("\"") || rest.has_prefix("'") {
         let value = parse_flow_value_from_string(ctx, rest)
-        (apply_node_props(value, tag, anchor, ctx.coerce_binary), line_index + 1)
+        (
+          apply_node_props(value, tag, anchor, ctx.coerce_binary),
+          line_index + 1,
+        )
       } else if is_plain_scalar_start(rest) {
         if has_props && (rest.has_prefix("- ") || rest.has_prefix("-\t")) {
           raise ParseError::UnexpectedChar(pos=rest_pos, found='-')
@@ -484,8 +500,12 @@ fn parse_inline_node_multiline(
           let node = apply_node_props(value, tag, anchor, ctx.coerce_binary)
           (node, line_index + 1)
         } else {
-          let (parts, next) =
-            collect_plain_continuation(lines, line_index + 1, indent, allow_same_indent_props)
+          let (parts, next) = collect_plain_continuation(
+            lines,
+            line_index + 1,
+            indent,
+            allow_same_indent_props,
+          )
           let joined = if parts.length() > 0 {
             fold_plain_lines(rest, parts)
           } else {
@@ -501,7 +521,10 @@ fn parse_inline_node_multiline(
         }
       } else {
         let value = parse_scalar_value(rest)
-        (apply_node_props(value, tag, anchor, ctx.coerce_binary), line_index + 1)
+        (
+          apply_node_props(value, tag, anchor, ctx.coerce_binary),
+          line_index + 1,
+        )
       }
     }
   }
@@ -526,18 +549,18 @@ fn parse_value_from_text(
   value_text : String,
   allow_same_indent_props : Bool,
 ) -> (Yaml, Int) raise ParseError {
-  let raw_value =
-    if value_text == block_content(lines[line_index]) {
-      lines[line_index].raw.view(start_offset=lines[line_index].indent).to_string()
-    } else {
-      value_text
-    }
-  let base_indent =
-    if value_text == block_content(lines[line_index]) {
-      indent - 1
-    } else {
-      indent
-    }
+  let raw_value = if value_text == block_content(lines[line_index]) {
+    lines[line_index].raw
+    .view(start_offset=lines[line_index].indent)
+    .to_string()
+  } else {
+    value_text
+  }
+  let base_indent = if value_text == block_content(lines[line_index]) {
+    indent - 1
+  } else {
+    indent
+  }
   let trimmed_value = value_text.trim_start().to_string()
   let raw_trimmed = raw_value.trim_start().to_string()
   if trimmed_value is "" {
@@ -551,20 +574,23 @@ fn parse_value_from_text(
           let after_props = next_non_empty(lines, next_index + 1)
           if after_props < lines.length() {
             let after_line = lines[after_props]
-            let outdented_seq =
-              block_indent(after_line) == indent &&
+            let outdented_seq = block_indent(after_line) == indent &&
               is_seq_line(after_line, indent)
             if block_indent(after_line) < block_indent(next_line) &&
               (block_indent(after_line) > indent || outdented_seq) {
-              match try_parse_block_scalar(
-                ctx,
-                block_content(after_line),
-                lines,
-                after_props + 1,
-                indent,
-              ) {
+              match
+                try_parse_block_scalar(
+                  ctx,
+                  block_content(after_line),
+                  lines,
+                  after_props + 1,
+                  indent,
+                ) {
                 Some((value, next)) =>
-                  return (apply_node_props(value, tag, anchor, ctx.coerce_binary), next)
+                  return (
+                    apply_node_props(value, tag, anchor, ctx.coerce_binary),
+                    next,
+                  )
                 None => {
                   let (value, next) = parse_block_node(
                     ctx,
@@ -573,7 +599,10 @@ fn parse_value_from_text(
                     block_indent(after_line),
                     true,
                   )
-                  return (apply_node_props(value, tag, anchor, ctx.coerce_binary), next)
+                  return (
+                    apply_node_props(value, tag, anchor, ctx.coerce_binary),
+                    next,
+                  )
                 }
               }
             }
@@ -592,10 +621,17 @@ fn parse_value_from_text(
     if trimmed_value is "-" ||
       trimmed_value.has_prefix("- ") ||
       trimmed_value.has_prefix("-\t") {
-      let virtual_indent =
-        inline_virtual_indent_seq(lines, line_index, indent, indent + 2)
-      let virtual_line =
-        make_virtual_line(lines[line_index].number, virtual_indent, trimmed_value)
+      let virtual_indent = inline_virtual_indent_seq(
+        lines,
+        line_index,
+        indent,
+        indent + 2,
+      )
+      let virtual_line = make_virtual_line(
+        lines[line_index].number,
+        virtual_indent,
+        trimmed_value,
+      )
       let temp : Array[Line] = [virtual_line]
       for i in (line_index + 1)..<lines.length() {
         temp.push(lines[i])
@@ -605,10 +641,17 @@ fn parse_value_from_text(
     }
     if is_plain_scalar_start(trimmed_value) &&
       split_key_value_opt(trimmed_value) is Some(_) {
-      let virtual_indent =
-        inline_virtual_indent_map(lines, line_index, indent, indent + 2)
-      let virtual_line =
-        make_virtual_line(lines[line_index].number, virtual_indent, trimmed_value)
+      let virtual_indent = inline_virtual_indent_map(
+        lines,
+        line_index,
+        indent,
+        indent + 2,
+      )
+      let virtual_line = make_virtual_line(
+        lines[line_index].number,
+        virtual_indent,
+        trimmed_value,
+      )
       let temp : Array[Line] = [virtual_line]
       for i in (line_index + 1)..<lines.length() {
         temp.push(lines[i])
@@ -617,25 +660,15 @@ fn parse_value_from_text(
       return (value, line_index + next)
     }
     if raw_trimmed.has_prefix("\"") && !is_terminated_double(raw_trimmed) {
-      let (combined, next) =
-        collect_quoted_multiline(
-          lines,
-          line_index,
-          '"',
-          raw_trimmed,
-          base_indent,
-        )
+      let (combined, next) = collect_quoted_multiline(
+        lines, line_index, '"', raw_trimmed, base_indent,
+      )
       return (parse_inline_value(ctx, combined), next)
     }
     if raw_trimmed.has_prefix("'") && !is_terminated_single(raw_trimmed) {
-      let (combined, next) =
-        collect_quoted_multiline(
-          lines,
-          line_index,
-          '\'',
-          raw_trimmed,
-          base_indent,
-        )
+      let (combined, next) = collect_quoted_multiline(
+        lines, line_index, '\'', raw_trimmed, base_indent,
+      )
       return (parse_inline_value(ctx, combined), next)
     }
     match try_parse_quoted_props(ctx, trimmed_value, lines, line_index) {
@@ -648,12 +681,7 @@ fn parse_value_from_text(
     }
     match
       try_parse_props_only(
-        ctx,
-        trimmed_value,
-        lines,
-        line_index,
-        indent,
-        allow_same_indent_props,
+        ctx, trimmed_value, lines, line_index, indent, allow_same_indent_props,
       ) {
       Some((node, next)) => return (node, next)
       None => ()
@@ -667,16 +695,10 @@ fn parse_value_from_text(
         base_indent,
       ) {
       Some((node, next)) => (node, next)
-      None => {
+      None =>
         parse_inline_node_multiline(
-          ctx,
-          lines,
-          line_index,
-          indent,
-          trimmed_value,
-          allow_same_indent_props,
+          ctx, lines, line_index, indent, trimmed_value, allow_same_indent_props,
         )
-      }
     }
   }
 }
@@ -708,21 +730,34 @@ fn try_parse_props_only(
       let next_line = lines[next_index]
       if block_indent(next_line) > indent {
         let child_indent = block_indent(next_line)
-        let (value, next) =
-          parse_block_node(ctx, lines, next_index, child_indent, true)
-        return Some((apply_node_props(value, tag, anchor, ctx.coerce_binary), next))
+        let (value, next) = parse_block_node(
+          ctx, lines, next_index, child_indent, true,
+        )
+        return Some(
+          (apply_node_props(value, tag, anchor, ctx.coerce_binary), next),
+        )
       }
       if block_indent(next_line) == indent && is_seq_line(next_line, indent) {
         let (value, next) = parse_block_seq(ctx, lines, next_index, indent)
-        return Some((apply_node_props(value, tag, anchor, ctx.coerce_binary), next))
+        return Some(
+          (apply_node_props(value, tag, anchor, ctx.coerce_binary), next),
+        )
       }
       if allow_same_indent_props && block_indent(next_line) == indent {
-        let (value, next) =
-          parse_block_node(ctx, lines, next_index, indent, true)
-        return Some((apply_node_props(value, tag, anchor, ctx.coerce_binary), next))
+        let (value, next) = parse_block_node(
+          ctx, lines, next_index, indent, true,
+        )
+        return Some(
+          (apply_node_props(value, tag, anchor, ctx.coerce_binary), next),
+        )
       }
     }
-    return Some((apply_node_props(Yaml::Null, tag, anchor, ctx.coerce_binary), line_index + 1))
+    return Some(
+      (
+        apply_node_props(Yaml::Null, tag, anchor, ctx.coerce_binary),
+        line_index + 1,
+      ),
+    )
   }
   None
 }
@@ -816,8 +851,9 @@ fn try_parse_flow_multiline(
     .to_string()
   if rest.has_prefix("[") || rest.has_prefix("{") {
     let base_indent = lines[line_index].indent
-    let (combined, next) =
-      collect_flow_multiline(lines, line_index, rest, base_indent)
+    let (combined, next) = collect_flow_multiline(
+      lines, line_index, rest, base_indent,
+    )
     let value = parse_flow_value_from_string(ctx, combined)
     return Some((apply_node_props(value, tag, anchor, ctx.coerce_binary), next))
   }
@@ -836,15 +872,17 @@ fn collect_flow_multiline(
   let mut depth = 0
   let mut in_single = false
   let mut in_double = false
-  let (next_depth, next_single, next_double) =
-    scan_flow_depth(first, depth, in_single, in_double)
+  let (next_depth, next_single, next_double) = scan_flow_depth(
+    first, depth, in_single, in_double,
+  )
   depth = next_depth
   in_single = next_single
   in_double = next_double
   let mut i = index + 1
   while depth > 0 && i < lines.length() {
     let line = lines[i]
-    if line.has_tab_indent && !(line.content is "") &&
+    if line.has_tab_indent &&
+      !(line.content is "") &&
       line.indent <= base_indent {
       raise ParseError::InvalidIndent(pos={
         line: line.number,
@@ -863,8 +901,9 @@ fn collect_flow_multiline(
     sb.write_char('\n')
     let line_text = line.raw.view(start_offset=line.indent).to_string()
     sb.write_string(line_text)
-    let (next_depth, next_single, next_double) =
-      scan_flow_depth(line_text, depth, in_single, in_double)
+    let (next_depth, next_single, next_double) = scan_flow_depth(
+      line_text, depth, in_single, in_double,
+    )
     depth = next_depth
     in_single = next_single
     in_double = next_double
@@ -947,15 +986,13 @@ fn collect_quoted_multiline(
       continue
     }
     let candidate = combined + "\n" + raw
-    let terminates =
-      if quote is '"' {
-        is_terminated_double(candidate)
-      } else {
-        is_terminated_single(candidate)
-      }
+    let terminates = if quote is '"' {
+      is_terminated_double(candidate)
+    } else {
+      is_terminated_single(candidate)
+    }
     if content_indent is None {
-      if (line.has_tab_indent && line.indent == 0) ||
-        line.indent <= base_indent {
+      if (line.has_tab_indent && line.indent == 0) || line.indent <= base_indent {
         raise ParseError::InvalidIndent(pos={
           line: line.number,
           column: line.indent + 1,
@@ -963,8 +1000,11 @@ fn collect_quoted_multiline(
       }
       content_indent = Some(line.indent)
     } else {
-      let effective_indent =
-        if line.has_tab_indent { line.indent + 1 } else { line.indent }
+      let effective_indent = if line.has_tab_indent {
+        line.indent + 1
+      } else {
+        line.indent
+      }
       if effective_indent < content_indent.unwrap_or(effective_indent) {
         if terminates {
           return (candidate, i + 1)
@@ -975,12 +1015,10 @@ fn collect_quoted_multiline(
         })
       }
     }
-    if line.indent == 0 && content_indent.unwrap_or(0) == 0 &&
+    if line.indent == 0 &&
+      content_indent.unwrap_or(0) == 0 &&
       is_doc_marker_line(raw) {
-      raise ParseError::InvalidIndent(pos={
-        line: line.number,
-        column: 1,
-      })
+      raise ParseError::InvalidIndent(pos={ line: line.number, column: 1 })
     }
     combined = candidate
     if terminates {
@@ -1070,9 +1108,7 @@ fn parse_explicit_entry(
   indent : Int,
 ) -> ((Yaml, Yaml), Int) raise ParseError {
   let line = lines[index]
-  let rest = drop_first_char(block_content(line))
-    .trim_start()
-    .to_string()
+  let rest = drop_first_char(block_content(line)).trim_start().to_string()
   if rest is "" {
     let next_index = next_non_empty(lines, index + 1)
     if next_index >= lines.length() || lines[next_index].indent < indent {
@@ -1091,8 +1127,9 @@ fn parse_explicit_entry(
     let value_line = next_non_empty(lines, next_after_key)
     if value_line < lines.length() && is_value_line(lines[value_line], indent) {
       let value_text = drop_first_char(block_content(lines[value_line]))
-      let (value, next) =
-        parse_value_from_text(ctx, lines, value_line, indent, value_text, false)
+      let (value, next) = parse_value_from_text(
+        ctx, lines, value_line, indent, value_text, false,
+      )
       ((key, value), next)
     } else {
       ((key, Yaml::Null), next_after_key)
@@ -1101,55 +1138,68 @@ fn parse_explicit_entry(
     match try_parse_block_scalar(ctx, rest, lines, index + 1, indent) {
       Some((key, next_after_key)) => {
         let value_line = next_non_empty(lines, next_after_key)
-        if value_line < lines.length() && is_value_line(lines[value_line], indent) {
+        if value_line < lines.length() &&
+          is_value_line(lines[value_line], indent) {
           let value_text = drop_first_char(block_content(lines[value_line]))
-          let (value, next) =
-            parse_value_from_text(ctx, lines, value_line, indent, value_text, false)
+          let (value, next) = parse_value_from_text(
+            ctx, lines, value_line, indent, value_text, false,
+          )
           ((key, value), next)
         } else {
           ((key, Yaml::Null), next_after_key)
         }
       }
-      None => {
+      None =>
         match split_key_value_opt(rest) {
           Some(_) => {
-            let virtual_indent =
-              inline_virtual_indent_map(lines, index, indent, indent + 2)
-            let virtual_line = make_virtual_line(line.number, virtual_indent, rest)
+            let virtual_indent = inline_virtual_indent_map(
+              lines,
+              index,
+              indent,
+              indent + 2,
+            )
+            let virtual_line = make_virtual_line(
+              line.number,
+              virtual_indent,
+              rest,
+            )
             let temp : Array[Line] = [virtual_line]
             for i in (index + 1)..<lines.length() {
               temp.push(lines[i])
             }
-            let (key, next_after_key) =
-              parse_block_map(ctx, temp, 0, virtual_indent)
+            let (key, next_after_key) = parse_block_map(
+              ctx, temp, 0, virtual_indent,
+            )
             let next_index = index + next_after_key
             let value_line = next_non_empty(lines, next_index)
             if value_line < lines.length() &&
               is_value_line(lines[value_line], indent) {
               let value_text = drop_first_char(block_content(lines[value_line]))
-              let (value, next) =
-                parse_value_from_text(ctx, lines, value_line, indent, value_text, false)
+              let (value, next) = parse_value_from_text(
+                ctx, lines, value_line, indent, value_text, false,
+              )
               ((key, value), next)
             } else {
               ((key, Yaml::Null), next_index)
             }
           }
           None => {
-            let (key, next_after_key) =
-              parse_value_from_text(ctx, lines, index, indent, rest, false)
+            let (key, next_after_key) = parse_value_from_text(
+              ctx, lines, index, indent, rest, false,
+            )
             let value_line = next_non_empty(lines, next_after_key)
             if value_line < lines.length() &&
               is_value_line(lines[value_line], indent) {
               let value_text = drop_first_char(block_content(lines[value_line]))
-              let (value, next) =
-                parse_value_from_text(ctx, lines, value_line, indent, value_text, false)
+              let (value, next) = parse_value_from_text(
+                ctx, lines, value_line, indent, value_text, false,
+              )
               ((key, value), next)
             } else {
               ((key, Yaml::Null), next_after_key)
             }
           }
         }
-      }
     }
   }
 }
@@ -1198,8 +1248,11 @@ fn collect_plain_continuation(
       i = i + 1
       continue
     }
-    let effective_indent =
-      if line.has_tab_indent { indent + 1 } else { line.indent }
+    let effective_indent = if line.has_tab_indent {
+      indent + 1
+    } else {
+      line.indent
+    }
     if allow_same_indent {
       if effective_indent < indent {
         break
@@ -1347,14 +1400,13 @@ fn try_parse_block_scalar(
     .to_string()
     .trim_start()
     .to_string()
-  let pos_line =
-    if lines.length() == 0 {
-      None
-    } else if index > 0 && index - 1 < lines.length() {
-      Some(lines[index - 1])
-    } else {
-      lines.last()
-    }
+  let pos_line = if lines.length() == 0 {
+    None
+  } else if index > 0 && index - 1 < lines.length() {
+    Some(lines[index - 1])
+  } else {
+    lines.last()
+  }
   let pos = match pos_line {
     None => { line: 1, column: 1 }
     Some(line) => { line: line.number, column: line.indent + 1 }
@@ -1365,7 +1417,12 @@ fn try_parse_block_scalar(
       let (value, next) = parse_block_scalar(
         lines, index, parent_indent, style, chomp, indent_hint,
       )
-      Some((apply_node_props(Yaml::String(value), tag, anchor, ctx.coerce_binary), next))
+      Some(
+        (
+          apply_node_props(Yaml::String(value), tag, anchor, ctx.coerce_binary),
+          next,
+        ),
+      )
     }
   }
 }
@@ -1406,10 +1463,7 @@ fn parse_block_scalar(
     let raw_content = line.raw.view(start_offset=line.indent).to_string()
     let mut treat_as_blank = is_space_only(raw_content)
     match content_indent {
-      Some(indent) =>
-        if line.indent > indent {
-          treat_as_blank = false
-        }
+      Some(indent) => if line.indent > indent { treat_as_blank = false }
       None => ()
     }
     if treat_as_blank {
@@ -1489,14 +1543,13 @@ fn parse_block_scalar(
   } else {
     fold_block_lines(collected)
   }
-  let with_newline =
-    if collected.length() > 0 {
-      base + "\n"
-    } else if chomp is Chomp::Keep && index < lines.length() {
-      "\n"
-    } else {
-      ""
-    }
+  let with_newline = if collected.length() > 0 {
+    base + "\n"
+  } else if chomp is Chomp::Keep && index < lines.length() {
+    "\n"
+  } else {
+    ""
+  }
   let value = apply_chomp(with_newline, chomp)
   (value, i)
 }
@@ -1550,8 +1603,7 @@ fn fold_block_lines(lines : Array[String]) -> String {
   for idx in 0..<lines.length() {
     let line = lines[idx]
     let is_blank = line is ""
-    let is_more = !is_blank &&
-      (line.has_prefix(" ") || line.has_prefix("\t"))
+    let is_more = !is_blank && (line.has_prefix(" ") || line.has_prefix("\t"))
     sb.write_string(line)
     if idx + 1 < lines.length() {
       let next = lines[idx + 1]
@@ -1661,8 +1713,7 @@ fn is_explicit_key_line(line : Line, indent : Int) -> Bool {
     return false
   }
   let content = block_content(line)
-  content is "?" ||
-  content.has_prefix("? ")
+  content is "?" || content.has_prefix("? ")
 }
 
 ///|
@@ -1672,16 +1723,11 @@ fn is_value_line(line : Line, indent : Int) -> Bool {
     return false
   }
   let content = block_content(line)
-  content is ":" ||
-  content.has_prefix(": ")
+  content is ":" || content.has_prefix(": ")
 }
 
 ///|
-fn is_value_line_after(
-  lines : Array[Line],
-  index : Int,
-  indent : Int,
-) -> Bool {
+fn is_value_line_after(lines : Array[Line], index : Int, indent : Int) -> Bool {
   let next_index = next_non_empty(lines, index + 1)
   if next_index >= lines.length() {
     return false
@@ -1785,7 +1831,11 @@ fn split_key_value_opt(content : String) -> (String, String)? {
       i = i + 1
       while i < chars.length() {
         let ch = chars[i]
-        if ch.is_whitespace() || ch is ',' || ch is ']' || ch is '}' || ch is '#' {
+        if ch.is_whitespace() ||
+          ch is ',' ||
+          ch is ']' ||
+          ch is '}' ||
+          ch is '#' {
           break
         }
         key_sb.write_char(ch)
@@ -1853,8 +1903,7 @@ fn split_key_value_opt(content : String) -> (String, String)? {
       continue
     }
     if c is ':' {
-      if depth == 0 &&
-        (i + 1 == chars.length() || chars[i + 1].is_whitespace()) {
+      if depth == 0 && (i + 1 == chars.length() || chars[i + 1].is_whitespace()) {
         found = true
         value_start = i + 1
         break
@@ -1901,13 +1950,7 @@ fn collect_lines(input : String) -> Array[Line] {
     let content = line.view(start_offset=indent).to_string()
     let stripped = strip_inline_comment(content)
     let trimmed = stripped.trim_end().to_string()
-    lines.push({
-      number,
-      indent,
-      has_tab_indent,
-      raw: line,
-      content: trimmed,
-    })
+    lines.push({ number, indent, has_tab_indent, raw: line, content: trimmed })
     number = number + 1
   }
   lines

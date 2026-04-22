@@ -52,7 +52,10 @@ fn apply_node_props(
     Some(a) =>
       match existing_anchor {
         Some(_) =>
-          raise ParseError::InvalidTagValue(tag="anchor", value="<duplicate-anchor>")
+          raise ParseError::InvalidTagValue(
+            tag="anchor",
+            value="<duplicate-anchor>",
+          )
         None => Some(a)
       }
     None => existing_anchor
@@ -84,7 +87,10 @@ fn extract_node_props(
     Anchor(name~, value~) => {
       let (base, tag, anchor) = extract_node_props(value)
       if anchor is Some(_) {
-        raise ParseError::InvalidTagValue(tag="anchor", value="<duplicate-anchor>")
+        raise ParseError::InvalidTagValue(
+          tag="anchor",
+          value="<duplicate-anchor>",
+        )
       }
       (base, tag, Some(name))
     }
@@ -100,6 +106,7 @@ fn extract_node_props(
 }
 
 ///|
+
 ///|
 fn coerce_tag(tag : String, value : Yaml) -> Yaml raise ParseError {
   if is_core_tag(tag, "null") {
@@ -306,7 +313,7 @@ fn read_verbatim_tag(scanner : Scanner) -> String raise ParseError {
         sb.write_char(c)
       }
     }
-  } else {
+  } nobreak {
     sb.to_string()
   }
 }
@@ -320,6 +327,7 @@ fn is_core_tag(tag : String, name : String) -> Bool {
 }
 
 ///|
+
 ///|
 fn read_anchor(scanner : Scanner) -> String raise ParseError {
   let sb = StringBuilder::new()
@@ -344,12 +352,7 @@ fn is_anchor_char(c : Char) -> Bool {
 
 ///|
 fn is_anchor_break(c : Char) -> Bool {
-  c is '[' ||
-  c is ']' ||
-  c is '{' ||
-  c is '}' ||
-  c is ',' ||
-  c is '#'
+  c is '[' || c is ']' || c is '{' || c is '}' || c is ',' || c is '#'
 }
 
 ///|

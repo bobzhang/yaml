@@ -44,10 +44,7 @@ test "parse flow plain multiline scalars" {
   let input =
     #|[a
     #|  b]
-  assert_eq(
-    parse_yaml(input),
-    Yaml::Seq([Yaml::String("a b")]),
-  )
+  assert_eq(parse_yaml(input), Yaml::Seq([Yaml::String("a b")]))
 }
 
 ///|
@@ -82,20 +79,11 @@ test "parse flow collections" {
       (Yaml::String("b"), Yaml::Int(1)),
     ]),
   )
-  assert_eq(
-    parse_yaml("{: 1}"),
-    Yaml::Map([(Yaml::Null, Yaml::Int(1))]),
-  )
-  assert_eq(
-    parse_yaml("{:}"),
-    Yaml::Map([(Yaml::Null, Yaml::Null)]),
-  )
+  assert_eq(parse_yaml("{: 1}"), Yaml::Map([(Yaml::Null, Yaml::Int(1))]))
+  assert_eq(parse_yaml("{:}"), Yaml::Map([(Yaml::Null, Yaml::Null)]))
   assert_eq(
     parse_yaml("{a, b:}"),
-    Yaml::Map([
-      (Yaml::String("a"), Yaml::Null),
-      (Yaml::String("b"), Yaml::Null),
-    ]),
+    Yaml::Map([(Yaml::String("a"), Yaml::Null), (Yaml::String("b"), Yaml::Null)]),
   )
   assert_eq(
     parse_yaml("{hello world: 1}"),
@@ -103,9 +91,7 @@ test "parse flow collections" {
   )
   assert_eq(
     parse_yaml("[a: 1]"),
-    Yaml::Seq([
-      Yaml::Map([(Yaml::String("a"), Yaml::Int(1))]),
-    ]),
+    Yaml::Seq([Yaml::Map([(Yaml::String("a"), Yaml::Int(1))])]),
   )
 }
 
