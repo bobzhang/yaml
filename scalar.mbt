@@ -42,7 +42,7 @@ fn parse_double_quoted(scanner : Scanner) -> String raise ParseError {
         sb.write_char(c)
       }
     }
-  } else {
+  } nobreak {
     sb.to_string()
   }
 }
@@ -82,7 +82,7 @@ fn parse_single_quoted(scanner : Scanner) -> String raise ParseError {
         sb.write_char(c)
       }
     }
-  } else {
+  } nobreak {
     sb.to_string()
   }
 }
@@ -167,8 +167,7 @@ fn fold_quoted_lines(lines : Array[String]) -> String {
     return sb.to_string()
   }
   let mut trailing = 0
-  while trailing < lines.length() &&
-        lines[lines.length() - 1 - trailing] is "" {
+  while trailing < lines.length() && lines[lines.length() - 1 - trailing] is "" {
     trailing = trailing + 1
   }
   let end = lines.length() - trailing
@@ -221,17 +220,10 @@ fn fold_quoted_lines(lines : Array[String]) -> String {
       i = j
       continue
     }
-    let text =
-      if i + 1 == end {
-        line
-      } else {
-        trim_end_whitespace(line)
-      }
+    let text = if i + 1 == end { line } else { trim_end_whitespace(line) }
     sb.write_string(text)
     last_ended_space = ends_with_space(text)
-    if i + 1 < end &&
-      !(lines[i + 1] is "") &&
-      !ends_with_space(text) {
+    if i + 1 < end && !(lines[i + 1] is "") && !ends_with_space(text) {
       sb.write_char(' ')
       last_ended_space = true
     }
@@ -325,10 +317,7 @@ fn is_flow_plain_break(scanner : Scanner, c : Char, prev_space : Bool) -> Bool {
 }
 
 ///|
-fn skip_flow_plain_line(
-  scanner : Scanner,
-  lines : Array[String],
-) -> Bool {
+fn skip_flow_plain_line(scanner : Scanner, lines : Array[String]) -> Bool {
   while true {
     while scanner.peek() is Some(c) && (c is ' ' || c is '\t') {
       ignore(scanner.advance())
@@ -540,13 +529,13 @@ fn parse_number(raw : String) -> Yaml? {
     lowered.contains("e") ||
     lowered.contains("E")
   if has_float {
-    try @strconv.parse_double(lowered[:]) catch {
+    try @string.parse_double(lowered[:]) catch {
       _ => None
     } noraise {
       value => Some(Yaml::Float(value))
     }
   } else {
-    try @strconv.parse_int(lowered[:]) catch {
+    try @string.parse_int(lowered[:]) catch {
       _ => None
     } noraise {
       value => Some(Yaml::Int(value))
@@ -567,7 +556,7 @@ fn strip_sign(value : String) -> (Int, String) {
 
 ///|
 fn parse_int_base(digits : String, base : Int, sign : Int) -> Yaml? {
-  try @strconv.parse_int(digits[:], base~) catch {
+  try @string.parse_int(digits[:], base~) catch {
     _ => None
   } noraise {
     value => Some(Yaml::Int(value * sign))
@@ -578,13 +567,13 @@ fn parse_int_base(digits : String, base : Int, sign : Int) -> Yaml? {
 fn parse_special_float(lowered : String) -> Double? {
   if lowered is ".inf" || lowered is "+.inf" || lowered is "-.inf" {
     let sign = if lowered.has_prefix("-") { -1.0 } else { 1.0 }
-    try @strconv.parse_double("inf") catch {
+    try @string.parse_double("inf") catch {
       _ => None
     } noraise {
       value => Some(value * sign)
     }
   } else if lowered is ".nan" || lowered is "+.nan" || lowered is "-.nan" {
-    try @strconv.parse_double("nan") catch {
+    try @string.parse_double("nan") catch {
       _ => None
     } noraise {
       value => Some(value)

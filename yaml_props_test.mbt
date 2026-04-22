@@ -36,9 +36,7 @@ test "anchors allow colons in names" {
     #|  *a:
     #|
   let docs = parse_yaml_stream_raw(input)
-  guard docs.length() == 1 else {
-    fail("expected single doc")
-  }
+  guard docs.length() == 1 else { fail("expected single doc") }
   assert_eq(
     docs[0],
     Yaml::Map([
@@ -108,24 +106,15 @@ test "parse tags" {
 
 ///|
 test "explicit tags keep plain scalars as strings" {
-  assert_eq(
-    parse_yaml("!foo 3"),
-    Yaml::Tagged(tag="!foo", value=Yaml::Int(3)),
-  )
-  assert_eq(
-    parse_yaml("! 3"),
-    Yaml::Tagged(tag="!", value=Yaml::Int(3)),
-  )
+  assert_eq(parse_yaml("!foo 3"), Yaml::Tagged(tag="!foo", value=Yaml::Int(3)))
+  assert_eq(parse_yaml("! 3"), Yaml::Tagged(tag="!", value=Yaml::Int(3)))
 }
 
 ///|
 test "parse binary tag" {
   assert_eq(
     parse_yaml("!!binary YWJj"),
-    Yaml::Tagged(
-      tag="tag:yaml.org,2002:binary",
-      value=Yaml::Binary(b"abc"),
-    ),
+    Yaml::Tagged(tag="tag:yaml.org,2002:binary", value=Yaml::Binary(b"abc")),
   )
   let input =
     #|!!binary |
@@ -134,10 +123,7 @@ test "parse binary tag" {
     #|
   assert_eq(
     parse_yaml(input),
-    Yaml::Tagged(
-      tag="tag:yaml.org,2002:binary",
-      value=Yaml::Binary(b"abcdef"),
-    ),
+    Yaml::Tagged(tag="tag:yaml.org,2002:binary", value=Yaml::Binary(b"abcdef")),
   )
 }
 

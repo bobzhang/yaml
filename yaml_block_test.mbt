@@ -22,25 +22,17 @@ test "parse empty mapping keys" {
     #|: b
     #|
   let docs = parse_yaml_stream_raw(input)
-  guard docs.length() == 1 else {
-    fail("expected single doc")
-  }
+  guard docs.length() == 1 else { fail("expected single doc") }
   assert_eq(
     docs[0],
-    Yaml::Map([
-      (Yaml::Null, Yaml::String("a")),
-      (Yaml::Null, Yaml::String("b")),
-    ]),
+    Yaml::Map([(Yaml::Null, Yaml::String("a")), (Yaml::Null, Yaml::String("b"))]),
   )
 }
 
 ///|
 test "parse bom at start" {
   let input = "\u{feff}a: 1"
-  assert_eq(
-    parse_yaml(input),
-    Yaml::Map([(Yaml::String("a"), Yaml::Int(1))]),
-  )
+  assert_eq(parse_yaml(input), Yaml::Map([(Yaml::String("a"), Yaml::Int(1))]))
 }
 
 ///|
@@ -262,7 +254,9 @@ test "reject invalid block scalar indicators" {
     #|a: |10
     #|  b
     #|
-  let multi_result : Result[Yaml, ParseError] = try? parse_yaml(multi_digit_input)
+  let multi_result : Result[Yaml, ParseError] = try? parse_yaml(
+    multi_digit_input,
+  )
   guard multi_result is Err(ParseError::InvalidIndent(_)) else {
     fail("expected invalid indent indicator error")
   }
@@ -270,7 +264,9 @@ test "reject invalid block scalar indicators" {
     #|a: |1---
     #|  b
     #|
-  let trailing_result : Result[Yaml, ParseError] = try? parse_yaml(trailing_input)
+  let trailing_result : Result[Yaml, ParseError] = try? parse_yaml(
+    trailing_input,
+  )
   guard trailing_result is Err(ParseError::InvalidIndent(_)) else {
     fail("expected invalid indicator trailing error")
   }
@@ -287,10 +283,7 @@ test "parse explicit mapping keys" {
     parse_yaml(input),
     Yaml::Map([
       (Yaml::String("key1"), Yaml::String("value1")),
-      (
-        Yaml::Map([(Yaml::String("key2"), Yaml::String("value2"))]),
-        Yaml::Null,
-      ),
+      (Yaml::Map([(Yaml::String("key2"), Yaml::String("value2"))]), Yaml::Null),
     ]),
   )
 }

@@ -45,8 +45,7 @@ fn TagContext::expand(
       let suffix = full_tag.view(start_offset=idx + 1).to_string()
       match self.handles.get(handle) {
         Some(prefix) => decode_tag_uri(prefix + suffix)
-        None =>
-          raise ParseError::InvalidTagValue(tag="tag", value=full_tag)
+        None => raise ParseError::InvalidTagValue(tag="tag", value=full_tag)
       }
     }
   }

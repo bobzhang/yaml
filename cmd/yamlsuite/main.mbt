@@ -26,8 +26,7 @@ fn run(args : Array[String]) -> Unit raise {
     let json = Json::array(docs.map(yaml_to_tree_json))
     println(json.stringify())
   } else if mode is "json" {
-    let docs =
-      @yaml.parse_yaml_stream_raw(input).map(@yaml.resolve_aliases)
+    let docs = @yaml.parse_yaml_stream_raw(input).map(@yaml.resolve_aliases)
     if docs.length() == 1 {
       let json = yaml_to_json_value(docs[0])
       println(json.stringify())
@@ -46,35 +45,25 @@ fn yaml_to_tree_json(value : @yaml.Yaml) -> Json {
     Null => tree_obj("Null", [])
     Bool(b) => tree_obj("Bool", [("value", Json::boolean(b))])
     Int(i) => tree_obj("Int", [("value", Json::string(i.to_string()))])
-    Float(f) =>
-      tree_obj("Float", [("value", float_to_json_value(f))])
+    Float(f) => tree_obj("Float", [("value", float_to_json_value(f))])
     String(s) => tree_obj("String", [("value", Json::string(s))])
     Binary(bytes) =>
-      tree_obj(
-        "String",
-        [("value", Json::string(@yaml.encode_base64(bytes)))],
-      )
+      tree_obj("String", [("value", Json::string(@yaml.encode_base64(bytes)))])
     Seq(items) =>
-      tree_obj(
-        "Seq",
-        [("items", Json::array(items.map(yaml_to_tree_json)))],
-      )
+      tree_obj("Seq", [("items", Json::array(items.map(yaml_to_tree_json)))])
     Map(items) =>
-      tree_obj(
-        "Map",
-        [("items", Json::array(items.map(pair_to_json)))],
-      )
+      tree_obj("Map", [("items", Json::array(items.map(pair_to_json)))])
     Alias(name) => tree_obj("Alias", [("name", Json::string(name))])
     Anchor(name~, value~) =>
-      tree_obj(
-        "Anchor",
-        [("name", Json::string(name)), ("value", yaml_to_tree_json(value))],
-      )
+      tree_obj("Anchor", [
+        ("name", Json::string(name)),
+        ("value", yaml_to_tree_json(value)),
+      ])
     Tagged(tag~, value~) =>
-      tree_obj(
-        "Tagged",
-        [("tag", Json::string(tag)), ("value", yaml_to_tree_json(value))],
-      )
+      tree_obj("Tagged", [
+        ("tag", Json::string(tag)),
+        ("value", yaml_to_tree_json(value)),
+      ])
   }
 }
 
@@ -123,7 +112,7 @@ fn yaml_to_json_value(value : @yaml.Yaml) -> Json raise @yaml.ParseError {
       ignore(name)
       yaml_to_json_value(value)
     }
-    Tagged(tag~, value~) => {
+    Tagged(tag~, value~) =>
       if is_set_tag(tag) {
         match value {
           Map(items) => set_map_to_json(items)
@@ -135,7 +124,6 @@ fn yaml_to_json_value(value : @yaml.Yaml) -> Json raise @yaml.ParseError {
         ignore(tag)
         yaml_to_json_value(value)
       }
-    }
     Alias(name) =>
       raise @yaml.ParseError::InvalidTagValue(tag="alias", value=name)
   }
