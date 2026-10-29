@@ -1,4 +1,4 @@
-name = "local/yaml"
+name = "bobzhang/yaml"
 
 version = "0.1.0"
 
@@ -6,4 +6,8 @@ description = "YAML 1.2 parser in MoonBit"
 
 keywords = [ "yaml", "parser" ]
 
-repository = ""
+repository = "https://github.com/bobzhang/yaml"
+
+readme = "README.md"
+
+license = "Apache-2.0"
