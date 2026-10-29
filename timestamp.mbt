@@ -103,7 +103,7 @@ fn is_valid_timestamp(raw : String) -> Bool {
 }
 
 ///|
-fn parse_two(chars : Array[Char], index : Int) -> Int? {
+fn parse_two(chars : Array[Char], index : Int32) -> Int32? {
   if index + 1 >= chars.length() {
     return None
   }
@@ -118,7 +118,7 @@ fn parse_two(chars : Array[Char], index : Int) -> Int? {
 }
 
 ///|
-fn parse_four(chars : Array[Char], index : Int) -> Int? {
+fn parse_four(chars : Array[Char], index : Int32) -> Int32? {
   if index + 3 >= chars.length() {
     return None
   }
@@ -141,7 +141,7 @@ fn parse_four(chars : Array[Char], index : Int) -> Int? {
 }
 
 ///|
-fn digit_value(c : Char) -> Int? {
+fn digit_value(c : Char) -> Int32? {
   if c.is_ascii_digit() {
     Some(c.to_int() - '0'.to_int())
   } else {
@@ -150,7 +150,7 @@ fn digit_value(c : Char) -> Int? {
 }
 
 ///|
-fn is_leap_year(year : Int) -> Bool {
+fn is_leap_year(year : Int32) -> Bool {
   if year % 400 == 0 {
     true
   } else if year % 100 == 0 {
@@ -161,7 +161,7 @@ fn is_leap_year(year : Int) -> Bool {
 }
 
 ///|
-fn days_in_month(year : Int, month : Int) -> Int {
+fn days_in_month(year : Int32, month : Int32) -> Int32 {
   match month {
     1 | 3 | 5 | 7 | 8 | 10 | 12 => 31
     4 | 6 | 9 | 11 => 30

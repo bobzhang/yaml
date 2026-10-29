@@ -10,7 +10,7 @@ fn TagContext::new() -> TagContext {
   let handles : Map[String, String] = {}
   handles["!!"] = "tag:yaml.org,2002:"
   handles["!"] = "!"
-  { handles, coerce_binary: true, seen_yaml: false }
+  { handles, coerce_binary: true, seen_yaml: false, }
 }
 
 ///|
@@ -18,7 +18,7 @@ fn TagContext::new_raw() -> TagContext {
   let handles : Map[String, String] = {}
   handles["!!"] = "tag:yaml.org,2002:"
   handles["!"] = "!"
-  { handles, coerce_binary: false, seen_yaml: false }
+  { handles, coerce_binary: false, seen_yaml: false, }
 }
 
 ///|
@@ -82,7 +82,7 @@ fn decode_tag_uri(text : String) -> String {
 }
 
 ///|
-fn tag_hex_value(c : Char) -> Int {
+fn tag_hex_value(c : Char) -> Int32 {
   if c >= '0' && c <= '9' {
     c.to_int() - '0'.to_int()
   } else if c >= 'A' && c <= 'F' {

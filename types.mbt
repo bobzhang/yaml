@@ -1,8 +1,8 @@
 ///|
 struct Position {
-  line : Int
-  column : Int
-} derive(Eq, Show, ToJson)
+  line : Int32
+  column : Int32
+} derive(Eq, Show, ToJson, Debug)
 
 ///|
 pub(all) suberror ParseError {
@@ -15,15 +15,15 @@ pub(all) suberror ParseError {
   InvalidMerge(detail~ : String)
   InvalidDirective(detail~ : String)
   InvalidTagValue(tag~ : String, value~ : String)
-  MultipleDocuments(count~ : Int)
+  MultipleDocuments(count~ : Int32)
   NotImplemented(feature~ : String)
-} derive(Eq, Show, ToJson)
+} derive(Eq, Show, ToJson, Debug)
 
 ///|
 pub(all) enum Yaml {
   Null
   Bool(Bool)
-  Int(Int)
+  Int(Int32)
   Float(Double)
   String(String)
   Binary(Bytes)
@@ -32,4 +32,4 @@ pub(all) enum Yaml {
   Alias(String)
   Anchor(name~ : String, value~ : Yaml)
   Tagged(tag~ : String, value~ : Yaml)
-} derive(Eq, Show, ToJson)
+} derive(Eq, Show, ToJson, Debug)

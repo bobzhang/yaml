@@ -102,7 +102,7 @@ fn upsert_entry(result : Array[(Yaml, Yaml)], key : Yaml, value : Yaml) -> Unit 
 }
 
 ///|
-fn find_key_index(items : Array[(Yaml, Yaml)], key : Yaml) -> Int? {
+fn find_key_index(items : Array[(Yaml, Yaml)], key : Yaml) -> Int32? {
   for i in 0..<items.length() {
     if items[i].0 == key {
       return Some(i)

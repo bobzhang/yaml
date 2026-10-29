@@ -1,6 +1,10 @@
 // Generated using `moon info`, DON'T EDIT IT
 package "local/yaml"
 
+import {
+  "moonbitlang/core/debug",
+}
+
 // Values
 pub fn decode_base64(String, String) -> Bytes raise ParseError
 
@@ -25,24 +29,18 @@ pub(all) suberror ParseError {
   InvalidMerge(detail~ : String)
   InvalidDirective(detail~ : String)
   InvalidTagValue(tag~ : String, value~ : String)
-  MultipleDocuments(count~ : Int)
+  MultipleDocuments(count~ : Int32)
   NotImplemented(feature~ : String)
-}
-pub impl Eq for ParseError
-pub impl Show for ParseError
-pub impl ToJson for ParseError
+} derive(Eq, Show, ToJson, @debug.Debug)
 
 // Types and methods
-type Position
-pub impl Eq for Position
-pub impl Show for Position
-pub impl ToJson for Position
+type Position derive(Eq, Show, ToJson, @debug.Debug)
 
 pub(all) enum Yaml {
   Null
   Bool(Bool)
-  Int(Int)
-  Float(Float)
+  Int(Int32)
+  Float(Double)
   String(String)
   Binary(Bytes)
   Seq(Array[Yaml])
@@ -50,12 +48,8 @@ pub(all) enum Yaml {
   Alias(String)
   Anchor(name~ : String, value~ : Yaml)
   Tagged(tag~ : String, value~ : Yaml)
-}
-pub impl Eq for Yaml
-pub impl Show for Yaml
-pub impl ToJson for Yaml
+} derive(Eq, Show, ToJson, @debug.Debug)
 
 // Type aliases
 
 // Traits
-
