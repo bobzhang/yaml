@@ -1,6 +1,6 @@
 ///|
 pub fn decode_base64(tag : String, raw : String) -> Bytes raise ParseError {
-  let values : Array[Int] = []
+  let values : Array[Int32] = []
   let mut seen_pad = false
   for c in raw {
     if c.is_whitespace() {
@@ -114,7 +114,7 @@ pub fn encode_base64(bytes : Bytes) -> String {
 }
 
 ///|
-fn base64_value(c : Char) -> Int? {
+fn base64_value(c : Char) -> Int32? {
   if c.is_ascii_uppercase() {
     Some(c.to_int() - 'A'.to_int())
   } else if c.is_ascii_lowercase() {

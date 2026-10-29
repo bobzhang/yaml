@@ -7,9 +7,9 @@ test "parse yaml streams" {
     #|---
     #|b: 2
     #|
-  assert_eq(parse_yaml_stream(input), [
-    Yaml::Map([(Yaml::String("a"), Yaml::Int(1))]),
-    Yaml::Map([(Yaml::String("b"), Yaml::Int(2))]),
+  assert_eq(@yaml.parse_yaml_stream(input), [
+    @yaml.Yaml::Map([(@yaml.Yaml::String("a"), @yaml.Yaml::Int(1))]),
+    @yaml.Yaml::Map([(@yaml.Yaml::String("b"), @yaml.Yaml::Int(2))]),
   ])
 }
 
@@ -20,8 +20,12 @@ test "parse yaml rejects multiple documents" {
     #|---
     #|b: 2
     #|
-  let result : Result[Yaml, ParseError] = try? parse_yaml(input)
-  guard result is Err(ParseError::MultipleDocuments(_)) else {
+  let result : Result[@yaml.Yaml, @yaml.ParseError] = Ok(
+    @yaml.parse_yaml(input),
+  ) catch {
+    err => Err(err)
+  }
+  guard result is Err(@yaml.ParseError::MultipleDocuments(_)) else {
     fail("expected multiple document error")
   }
 }
@@ -32,5 +36,5 @@ test "parse inline document start" {
     #|%YAML 1.2
     #|--- text
     #|
-  assert_eq(parse_yaml_stream(input), [Yaml::String("text")])
+  assert_eq(@yaml.parse_yaml_stream(input), [@yaml.Yaml::String("text")])
 }

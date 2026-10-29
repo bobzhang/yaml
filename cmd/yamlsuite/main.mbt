@@ -1,7 +1,7 @@
 ///|
 fn main {
   let args = @env.args()
-  let result : Result[Unit, Error] = try? run(args)
+  let result : Result[Unit, Error] = Ok(run(args)) catch { err => Err(err) }
   match result {
     Ok(_) => ()
     Err(err) => {

@@ -5,10 +5,13 @@ test "parse anchors and aliases" {
     #|b: *id
     #|
   assert_eq(
-    parse_yaml(input),
-    Yaml::Map([
-      (Yaml::String("a"), Yaml::Anchor(name="id", value=Yaml::Int(1))),
-      (Yaml::String("b"), Yaml::Int(1)),
+    @yaml.parse_yaml(input),
+    @yaml.Yaml::Map([
+      (
+        @yaml.Yaml::String("a"),
+        @yaml.Yaml::Anchor(name="id", value=@yaml.Yaml::Int(1)),
+      ),
+      (@yaml.Yaml::String("b"), @yaml.Yaml::Int(1)),
     ]),
   )
 }
@@ -20,10 +23,13 @@ test "anchors allow punctuation" {
     #|b: *id+1
     #|
   assert_eq(
-    parse_yaml(input),
-    Yaml::Map([
-      (Yaml::String("a"), Yaml::Anchor(name="id+1", value=Yaml::Int(1))),
-      (Yaml::String("b"), Yaml::Int(1)),
+    @yaml.parse_yaml(input),
+    @yaml.Yaml::Map([
+      (
+        @yaml.Yaml::String("a"),
+        @yaml.Yaml::Anchor(name="id+1", value=@yaml.Yaml::Int(1)),
+      ),
+      (@yaml.Yaml::String("b"), @yaml.Yaml::Int(1)),
     ]),
   )
 }
@@ -35,16 +41,16 @@ test "anchors allow colons in names" {
     #|foo:
     #|  *a:
     #|
-  let docs = parse_yaml_stream_raw(input)
+  let docs = @yaml.parse_yaml_stream_raw(input)
   guard docs.length() == 1 else { fail("expected single doc") }
   assert_eq(
     docs[0],
-    Yaml::Map([
+    @yaml.Yaml::Map([
       (
-        Yaml::Anchor(name="a:", value=Yaml::String("key")),
-        Yaml::Anchor(name="a", value=Yaml::String("value")),
+        @yaml.Yaml::Anchor(name="a:", value=@yaml.Yaml::String("key")),
+        @yaml.Yaml::Anchor(name="a", value=@yaml.Yaml::String("value")),
       ),
-      (Yaml::String("foo"), Yaml::Alias("a:")),
+      (@yaml.Yaml::String("foo"), @yaml.Yaml::Alias("a:")),
     ]),
   )
 }
@@ -57,12 +63,12 @@ test "tag-only line applies to following block node" {
     #|? Sammy Sosa
     #|
   assert_eq(
-    parse_yaml(input),
-    Yaml::Tagged(
+    @yaml.parse_yaml(input),
+    @yaml.Yaml::Tagged(
       tag="tag:yaml.org,2002:set",
-      value=Yaml::Map([
-        (Yaml::String("Mark McGwire"), Yaml::Null),
-        (Yaml::String("Sammy Sosa"), Yaml::Null),
+      value=@yaml.Yaml::Map([
+        (@yaml.Yaml::String("Mark McGwire"), @yaml.Yaml::Null),
+        (@yaml.Yaml::String("Sammy Sosa"), @yaml.Yaml::Null),
       ]),
     ),
   )
@@ -74,8 +80,12 @@ test "reject duplicate anchors" {
     #|top: &a
     #|  &b value
     #|
-  let result : Result[Yaml, ParseError] = try? parse_yaml(input)
-  guard result is Err(ParseError::InvalidTagValue(_)) else {
+  let result : Result[@yaml.Yaml, @yaml.ParseError] = Ok(
+    @yaml.parse_yaml(input),
+  ) catch {
+    err => Err(err)
+  }
+  guard result is Err(@yaml.ParseError::InvalidTagValue(_)) else {
     fail("expected duplicate anchor error")
   }
 }
@@ -87,17 +97,17 @@ test "parse tags" {
     #|v2: !other &a 2
     #|
   assert_eq(
-    parse_yaml(input),
-    Yaml::Map([
+    @yaml.parse_yaml(input),
+    @yaml.Yaml::Map([
       (
-        Yaml::String("v1"),
-        Yaml::Tagged(tag="!tag", value=Yaml::String("hello")),
+        @yaml.Yaml::String("v1"),
+        @yaml.Yaml::Tagged(tag="!tag", value=@yaml.Yaml::String("hello")),
       ),
       (
-        Yaml::String("v2"),
-        Yaml::Anchor(
+        @yaml.Yaml::String("v2"),
+        @yaml.Yaml::Anchor(
           name="a",
-          value=Yaml::Tagged(tag="!other", value=Yaml::Int(2)),
+          value=@yaml.Yaml::Tagged(tag="!other", value=@yaml.Yaml::Int(2)),
         ),
       ),
     ]),
@@ -106,15 +116,24 @@ test "parse tags" {
 
 ///|
 test "explicit tags keep plain scalars as strings" {
-  assert_eq(parse_yaml("!foo 3"), Yaml::Tagged(tag="!foo", value=Yaml::Int(3)))
-  assert_eq(parse_yaml("! 3"), Yaml::Tagged(tag="!", value=Yaml::Int(3)))
+  assert_eq(
+    @yaml.parse_yaml("!foo 3"),
+    @yaml.Yaml::Tagged(tag="!foo", value=@yaml.Yaml::Int(3)),
+  )
+  assert_eq(
+    @yaml.parse_yaml("! 3"),
+    @yaml.Yaml::Tagged(tag="!", value=@yaml.Yaml::Int(3)),
+  )
 }
 
 ///|
 test "parse binary tag" {
   assert_eq(
-    parse_yaml("!!binary YWJj"),
-    Yaml::Tagged(tag="tag:yaml.org,2002:binary", value=Yaml::Binary(b"abc")),
+    @yaml.parse_yaml("!!binary YWJj"),
+    @yaml.Yaml::Tagged(
+      tag="tag:yaml.org,2002:binary",
+      value=@yaml.Yaml::Binary(b"abc"),
+    ),
   )
   let input =
     #|!!binary |
@@ -122,16 +141,23 @@ test "parse binary tag" {
     #|  ZGVm
     #|
   assert_eq(
-    parse_yaml(input),
-    Yaml::Tagged(tag="tag:yaml.org,2002:binary", value=Yaml::Binary(b"abcdef")),
+    @yaml.parse_yaml(input),
+    @yaml.Yaml::Tagged(
+      tag="tag:yaml.org,2002:binary",
+      value=@yaml.Yaml::Binary(b"abcdef"),
+    ),
   )
 }
 
 ///|
 test "reject invalid binary tag" {
   let input = "!!binary \"@@\""
-  let result : Result[Yaml, ParseError] = try? parse_yaml(input)
-  guard result is Err(ParseError::InvalidTagValue(_)) else {
+  let result : Result[@yaml.Yaml, @yaml.ParseError] = Ok(
+    @yaml.parse_yaml(input),
+  ) catch {
+    err => Err(err)
+  }
+  guard result is Err(@yaml.ParseError::InvalidTagValue(_)) else {
     fail("expected invalid tag value error")
   }
 }
@@ -139,17 +165,17 @@ test "reject invalid binary tag" {
 ///|
 test "parse timestamp tag" {
   assert_eq(
-    parse_yaml("!!timestamp 2001-12-15"),
-    Yaml::Tagged(
+    @yaml.parse_yaml("!!timestamp 2001-12-15"),
+    @yaml.Yaml::Tagged(
       tag="tag:yaml.org,2002:timestamp",
-      value=Yaml::String("2001-12-15"),
+      value=@yaml.Yaml::String("2001-12-15"),
     ),
   )
   assert_eq(
-    parse_yaml("!!timestamp 2001-12-15T02:59:43.1Z"),
-    Yaml::Tagged(
+    @yaml.parse_yaml("!!timestamp 2001-12-15T02:59:43.1Z"),
+    @yaml.Yaml::Tagged(
       tag="tag:yaml.org,2002:timestamp",
-      value=Yaml::String("2001-12-15T02:59:43.1Z"),
+      value=@yaml.Yaml::String("2001-12-15T02:59:43.1Z"),
     ),
   )
 }
@@ -157,8 +183,12 @@ test "parse timestamp tag" {
 ///|
 test "reject invalid timestamp tag" {
   let input = "!!timestamp 2023-13-01"
-  let result : Result[Yaml, ParseError] = try? parse_yaml(input)
-  guard result is Err(ParseError::InvalidTagValue(_)) else {
+  let result : Result[@yaml.Yaml, @yaml.ParseError] = Ok(
+    @yaml.parse_yaml(input),
+  ) catch {
+    err => Err(err)
+  }
+  guard result is Err(@yaml.ParseError::InvalidTagValue(_)) else {
     fail("expected invalid tag value error")
   }
 }
@@ -166,12 +196,12 @@ test "reject invalid timestamp tag" {
 ///|
 test "parse set tag" {
   assert_eq(
-    parse_yaml("!!set {a:, b:}"),
-    Yaml::Tagged(
+    @yaml.parse_yaml("!!set {a:, b:}"),
+    @yaml.Yaml::Tagged(
       tag="tag:yaml.org,2002:set",
-      value=Yaml::Map([
-        (Yaml::String("a"), Yaml::Null),
-        (Yaml::String("b"), Yaml::Null),
+      value=@yaml.Yaml::Map([
+        (@yaml.Yaml::String("a"), @yaml.Yaml::Null),
+        (@yaml.Yaml::String("b"), @yaml.Yaml::Null),
       ]),
     ),
   )
@@ -184,11 +214,14 @@ test "parse tagged multiline quoted scalar" {
     #|  b"
     #|
   assert_eq(
-    parse_yaml(input),
-    Yaml::Map([
+    @yaml.parse_yaml(input),
+    @yaml.Yaml::Map([
       (
-        Yaml::String("value"),
-        Yaml::Tagged(tag="tag:yaml.org,2002:str", value=Yaml::String("a b")),
+        @yaml.Yaml::String("value"),
+        @yaml.Yaml::Tagged(
+          tag="tag:yaml.org,2002:str",
+          value=@yaml.Yaml::String("a b"),
+        ),
       ),
     ]),
   )
@@ -197,8 +230,12 @@ test "parse tagged multiline quoted scalar" {
 ///|
 test "reject invalid set tag" {
   let input = "!!set {a: 1}"
-  let result : Result[Yaml, ParseError] = try? parse_yaml(input)
-  guard result is Err(ParseError::InvalidTagValue(_)) else {
+  let result : Result[@yaml.Yaml, @yaml.ParseError] = Ok(
+    @yaml.parse_yaml(input),
+  ) catch {
+    err => Err(err)
+  }
+  guard result is Err(@yaml.ParseError::InvalidTagValue(_)) else {
     fail("expected invalid tag value error")
   }
 }
@@ -206,22 +243,22 @@ test "reject invalid set tag" {
 ///|
 test "parse pairs and omap tags" {
   assert_eq(
-    parse_yaml("!!pairs [{a: 1}, {b: 2}]"),
-    Yaml::Tagged(
+    @yaml.parse_yaml("!!pairs [{a: 1}, {b: 2}]"),
+    @yaml.Yaml::Tagged(
       tag="tag:yaml.org,2002:pairs",
-      value=Yaml::Seq([
-        Yaml::Map([(Yaml::String("a"), Yaml::Int(1))]),
-        Yaml::Map([(Yaml::String("b"), Yaml::Int(2))]),
+      value=@yaml.Yaml::Seq([
+        @yaml.Yaml::Map([(@yaml.Yaml::String("a"), @yaml.Yaml::Int(1))]),
+        @yaml.Yaml::Map([(@yaml.Yaml::String("b"), @yaml.Yaml::Int(2))]),
       ]),
     ),
   )
   assert_eq(
-    parse_yaml("!!omap [{a: 1}, {b: 2}]"),
-    Yaml::Tagged(
+    @yaml.parse_yaml("!!omap [{a: 1}, {b: 2}]"),
+    @yaml.Yaml::Tagged(
       tag="tag:yaml.org,2002:omap",
-      value=Yaml::Seq([
-        Yaml::Map([(Yaml::String("a"), Yaml::Int(1))]),
-        Yaml::Map([(Yaml::String("b"), Yaml::Int(2))]),
+      value=@yaml.Yaml::Seq([
+        @yaml.Yaml::Map([(@yaml.Yaml::String("a"), @yaml.Yaml::Int(1))]),
+        @yaml.Yaml::Map([(@yaml.Yaml::String("b"), @yaml.Yaml::Int(2))]),
       ]),
     ),
   )
@@ -230,8 +267,12 @@ test "parse pairs and omap tags" {
 ///|
 test "reject invalid omap tag" {
   let input = "!!omap [{a: 1}, {a: 2}]"
-  let result : Result[Yaml, ParseError] = try? parse_yaml(input)
-  guard result is Err(ParseError::InvalidTagValue(_)) else {
+  let result : Result[@yaml.Yaml, @yaml.ParseError] = Ok(
+    @yaml.parse_yaml(input),
+  ) catch {
+    err => Err(err)
+  }
+  guard result is Err(@yaml.ParseError::InvalidTagValue(_)) else {
     fail("expected invalid tag value error")
   }
 }
@@ -239,17 +280,17 @@ test "reject invalid omap tag" {
 ///|
 test "parse map and seq tags" {
   assert_eq(
-    parse_yaml("!!map {a: 1}"),
-    Yaml::Tagged(
+    @yaml.parse_yaml("!!map {a: 1}"),
+    @yaml.Yaml::Tagged(
       tag="tag:yaml.org,2002:map",
-      value=Yaml::Map([(Yaml::String("a"), Yaml::Int(1))]),
+      value=@yaml.Yaml::Map([(@yaml.Yaml::String("a"), @yaml.Yaml::Int(1))]),
     ),
   )
   assert_eq(
-    parse_yaml("!!seq [1, 2]"),
-    Yaml::Tagged(
+    @yaml.parse_yaml("!!seq [1, 2]"),
+    @yaml.Yaml::Tagged(
       tag="tag:yaml.org,2002:seq",
-      value=Yaml::Seq([Yaml::Int(1), Yaml::Int(2)]),
+      value=@yaml.Yaml::Seq([@yaml.Yaml::Int(1), @yaml.Yaml::Int(2)]),
     ),
   )
 }
@@ -257,13 +298,21 @@ test "parse map and seq tags" {
 ///|
 test "reject invalid map and seq tags" {
   let map_input = "!!map [1]"
-  let map_result : Result[Yaml, ParseError] = try? parse_yaml(map_input)
-  guard map_result is Err(ParseError::InvalidTagValue(_)) else {
+  let map_result : Result[@yaml.Yaml, @yaml.ParseError] = Ok(
+    @yaml.parse_yaml(map_input),
+  ) catch {
+    err => Err(err)
+  }
+  guard map_result is Err(@yaml.ParseError::InvalidTagValue(_)) else {
     fail("expected invalid tag value error")
   }
   let seq_input = "!!seq {a: 1}"
-  let seq_result : Result[Yaml, ParseError] = try? parse_yaml(seq_input)
-  guard seq_result is Err(ParseError::InvalidTagValue(_)) else {
+  let seq_result : Result[@yaml.Yaml, @yaml.ParseError] = Ok(
+    @yaml.parse_yaml(seq_input),
+  ) catch {
+    err => Err(err)
+  }
+  guard seq_result is Err(@yaml.ParseError::InvalidTagValue(_)) else {
     fail("expected invalid tag value error")
   }
 }
@@ -271,23 +320,29 @@ test "reject invalid map and seq tags" {
 ///|
 test "parse core tagged scalars" {
   assert_eq(
-    parse_yaml("!!str 3"),
-    Yaml::Tagged(tag="tag:yaml.org,2002:str", value=Yaml::Int(3)),
+    @yaml.parse_yaml("!!str 3"),
+    @yaml.Yaml::Tagged(tag="tag:yaml.org,2002:str", value=@yaml.Yaml::Int(3)),
   )
   assert_eq(
-    parse_yaml("!!int \"3\""),
-    Yaml::Tagged(tag="tag:yaml.org,2002:int", value=Yaml::Int(3)),
+    @yaml.parse_yaml("!!int \"3\""),
+    @yaml.Yaml::Tagged(tag="tag:yaml.org,2002:int", value=@yaml.Yaml::Int(3)),
   )
   assert_eq(
-    parse_yaml("!!bool \"true\""),
-    Yaml::Tagged(tag="tag:yaml.org,2002:bool", value=Yaml::Bool(true)),
+    @yaml.parse_yaml("!!bool \"true\""),
+    @yaml.Yaml::Tagged(
+      tag="tag:yaml.org,2002:bool",
+      value=@yaml.Yaml::Bool(true),
+    ),
   )
 }
 
 ///|
 test "parse flow props" {
   assert_eq(
-    parse_yaml("[&a 1, *a]"),
-    Yaml::Seq([Yaml::Anchor(name="a", value=Yaml::Int(1)), Yaml::Int(1)]),
+    @yaml.parse_yaml("[&a 1, *a]"),
+    @yaml.Yaml::Seq([
+      @yaml.Yaml::Anchor(name="a", value=@yaml.Yaml::Int(1)),
+      @yaml.Yaml::Int(1),
+    ]),
   )
 }

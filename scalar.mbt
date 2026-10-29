@@ -425,7 +425,7 @@ fn skip_quoted_indent(scanner : Scanner) -> Unit {
 }
 
 ///|
-fn read_hex(scanner : Scanner, digits : Int) -> Int raise ParseError {
+fn read_hex(scanner : Scanner, digits : Int32) -> Int32 raise ParseError {
   let mut value = 0
   for _ in 0..<digits {
     match scanner.advance() {
@@ -445,7 +445,7 @@ fn read_hex(scanner : Scanner, digits : Int) -> Int raise ParseError {
 }
 
 ///|
-fn hex_value(c : Char) -> Int? {
+fn hex_value(c : Char) -> Int32? {
   if c.is_ascii_digit() {
     Some(c.to_int() - '0'.to_int())
   } else if c.is_ascii_lowercase() {
@@ -458,7 +458,7 @@ fn hex_value(c : Char) -> Int? {
 }
 
 ///|
-fn char_from_code(code : Int, scanner : Scanner) -> Char raise ParseError {
+fn char_from_code(code : Int32, scanner : Scanner) -> Char raise ParseError {
   match code.to_char() {
     Some(c) => c
     None =>
@@ -544,7 +544,7 @@ fn parse_number(raw : String) -> Yaml? {
 }
 
 ///|
-fn strip_sign(value : String) -> (Int, String) {
+fn strip_sign(value : String) -> (Int32, String) {
   if value.has_prefix("-") {
     (-1, value.view(start_offset=1).to_string())
   } else if value.has_prefix("+") {
@@ -555,7 +555,7 @@ fn strip_sign(value : String) -> (Int, String) {
 }
 
 ///|
-fn parse_int_base(digits : String, base : Int, sign : Int) -> Yaml? {
+fn parse_int_base(digits : String, base : Int32, sign : Int32) -> Yaml? {
   try @string.parse_int(digits[:], base~) catch {
     _ => None
   } noraise {

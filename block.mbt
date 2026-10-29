@@ -1,14 +1,14 @@
 ///|
 priv struct Line {
-  number : Int
-  indent : Int
+  number : Int32
+  indent : Int32
   has_tab_indent : Bool
   raw : String
   content : String
 }
 
 ///|
-fn block_indent(line : Line) -> Int {
+fn block_indent(line : Line) -> Int32 {
   if line.has_tab_indent && line.indent > 0 {
     line.indent + 1
   } else {
@@ -38,22 +38,22 @@ fn drop_first_char(text : String) -> String {
 }
 
 ///|
-fn make_virtual_line(number : Int, indent : Int, content : String) -> Line {
+fn make_virtual_line(number : Int32, indent : Int32, content : String) -> Line {
   let sb = StringBuilder::new()
   for _ in 0..<indent {
     sb.write_char(' ')
   }
   sb.write_string(content)
-  { number, indent, has_tab_indent: false, raw: sb.to_string(), content }
+  { number, indent, has_tab_indent: false, raw: sb.to_string(), content, }
 }
 
 ///|
 fn inline_virtual_indent_seq(
   lines : Array[Line],
-  line_index : Int,
-  parent_indent : Int,
-  default_indent : Int,
-) -> Int {
+  line_index : Int32,
+  parent_indent : Int32,
+  default_indent : Int32,
+) -> Int32 {
   let next_index = next_non_empty(lines, line_index + 1)
   if next_index < lines.length() {
     let next_line = lines[next_index]
@@ -70,10 +70,10 @@ fn inline_virtual_indent_seq(
 ///|
 fn inline_virtual_indent_map(
   lines : Array[Line],
-  line_index : Int,
-  parent_indent : Int,
-  default_indent : Int,
-) -> Int {
+  line_index : Int32,
+  parent_indent : Int32,
+  default_indent : Int32,
+) -> Int32 {
   let next_index = next_non_empty(lines, line_index + 1)
   if next_index < lines.length() {
     let next_line = lines[next_index]
@@ -110,7 +110,7 @@ fn parse_block_document(
   if rest < lines.length() {
     let line = lines[rest]
     raise ParseError::UnexpectedChar(
-      pos={ line: line.number, column: line.indent + 1 },
+      pos={ line: line.number, column: line.indent + 1, },
       found='-',
     )
   }
@@ -121,15 +121,15 @@ fn parse_block_document(
 fn parse_block_node(
   ctx : TagContext,
   lines : Array[Line],
-  index : Int,
-  indent : Int,
+  index : Int32,
+  indent : Int32,
   allow_same_indent_props : Bool,
-) -> (Yaml, Int) raise ParseError {
+) -> (Yaml, Int32) raise ParseError {
   let start = next_non_empty(lines, index)
   if start >= lines.length() {
     let pos = match lines.last() {
-      None => { line: 1, column: 1 }
-      Some(last) => { line: last.number, column: last.indent + 1 }
+      None => { line: 1, column: 1, }
+      Some(last) => { line: last.number, column: last.indent + 1, }
     }
     raise ParseError::UnexpectedEof(pos~)
   }
@@ -167,7 +167,7 @@ fn parse_block_node(
 }
 
 ///|
-fn next_non_empty(lines : Array[Line], index : Int) -> Int {
+fn next_non_empty(lines : Array[Line], index : Int32) -> Int32 {
   let mut i = index
   while i < lines.length() && lines[i].content is "" {
     i = i + 1
@@ -179,9 +179,9 @@ fn next_non_empty(lines : Array[Line], index : Int) -> Int {
 fn parse_block_seq(
   ctx : TagContext,
   lines : Array[Line],
-  index : Int,
-  indent : Int,
-) -> (Yaml, Int) raise ParseError {
+  index : Int32,
+  indent : Int32,
+) -> (Yaml, Int32) raise ParseError {
   let items : Array[Yaml] = []
   let mut i = index
   while i < lines.length() {
@@ -313,9 +313,9 @@ fn parse_block_seq(
 fn parse_block_map(
   ctx : TagContext,
   lines : Array[Line],
-  index : Int,
-  indent : Int,
-) -> (Yaml, Int) raise ParseError {
+  index : Int32,
+  indent : Int32,
+) -> (Yaml, Int32) raise ParseError {
   let items : Array[(Yaml, Yaml)] = []
   let mut i = index
   while i < lines.length() {
@@ -362,7 +362,7 @@ fn parse_block_map(
       if is_plain_scalar_start(trimmed_value) &&
         has_plain_key_indicator(trimmed_value) {
         raise ParseError::UnexpectedChar(
-          pos={ line: line.number, column: line.indent + 1 },
+          pos={ line: line.number, column: line.indent + 1, },
           found=':',
         )
       }
@@ -434,11 +434,11 @@ fn parse_inline_value(ctx : TagContext, text : String) -> Yaml raise ParseError 
 fn parse_inline_node_multiline(
   ctx : TagContext,
   lines : Array[Line],
-  line_index : Int,
-  indent : Int,
+  line_index : Int32,
+  indent : Int32,
   text : String,
   allow_same_indent_props : Bool,
-) -> (Yaml, Int) raise ParseError {
+) -> (Yaml, Int32) raise ParseError {
   let trimmed = text.trim().to_string()
   let mut inline_comment = false
   if line_index < lines.length() {
@@ -544,11 +544,11 @@ fn parse_inline_key(ctx : TagContext, text : String) -> Yaml raise ParseError {
 fn parse_value_from_text(
   ctx : TagContext,
   lines : Array[Line],
-  line_index : Int,
-  indent : Int,
+  line_index : Int32,
+  indent : Int32,
   value_text : String,
   allow_same_indent_props : Bool,
-) -> (Yaml, Int) raise ParseError {
+) -> (Yaml, Int32) raise ParseError {
   let raw_value = if value_text == block_content(lines[line_index]) {
     lines[line_index].raw
     .view(start_offset=lines[line_index].indent)
@@ -708,10 +708,10 @@ fn try_parse_props_only(
   ctx : TagContext,
   text : String,
   lines : Array[Line],
-  line_index : Int,
-  indent : Int,
+  line_index : Int32,
+  indent : Int32,
   allow_same_indent_props : Bool,
-) -> (Yaml, Int)? raise ParseError {
+) -> (Yaml, Int32)? raise ParseError {
   let scanner = Scanner::new(text)
   scanner.skip_ws_and_comments()
   if parse_alias(scanner) is Some(_) {
@@ -791,8 +791,8 @@ fn try_parse_quoted_props(
   ctx : TagContext,
   text : String,
   lines : Array[Line],
-  line_index : Int,
-) -> (Yaml, Int)? raise ParseError {
+  line_index : Int32,
+) -> (Yaml, Int32)? raise ParseError {
   let scanner = Scanner::new(text)
   scanner.skip_ws_and_comments()
   if parse_alias(scanner) is Some(_) {
@@ -835,8 +835,8 @@ fn try_parse_flow_multiline(
   ctx : TagContext,
   text : String,
   lines : Array[Line],
-  line_index : Int,
-) -> (Yaml, Int)? raise ParseError {
+  line_index : Int32,
+) -> (Yaml, Int32)? raise ParseError {
   let scanner = Scanner::new(text)
   scanner.skip_ws_and_comments()
   if parse_alias(scanner) is Some(_) {
@@ -863,10 +863,10 @@ fn try_parse_flow_multiline(
 ///|
 fn collect_flow_multiline(
   lines : Array[Line],
-  index : Int,
+  index : Int32,
   first : String,
-  base_indent : Int,
-) -> (String, Int) raise ParseError {
+  base_indent : Int32,
+) -> (String, Int32) raise ParseError {
   let sb = StringBuilder::new()
   sb.write_string(first)
   let mut depth = 0
@@ -915,10 +915,10 @@ fn collect_flow_multiline(
 ///|
 fn scan_flow_depth(
   text : String,
-  depth : Int,
+  depth : Int32,
   in_single : Bool,
   in_double : Bool,
-) -> (Int, Bool, Bool) {
+) -> (Int32, Bool, Bool) {
   let mut d = depth
   let mut single = in_single
   let mut double = in_double
@@ -969,12 +969,12 @@ fn scan_flow_depth(
 ///|
 fn collect_quoted_multiline(
   lines : Array[Line],
-  index : Int,
+  index : Int32,
   quote : Char,
   first : String,
-  base_indent : Int,
-) -> (String, Int) raise ParseError {
-  let mut content_indent : Int? = None
+  base_indent : Int32,
+) -> (String, Int32) raise ParseError {
+  let mut content_indent : Int32? = None
   let mut combined = first
   let mut i = index + 1
   while i < lines.length() {
@@ -1018,7 +1018,7 @@ fn collect_quoted_multiline(
     if line.indent == 0 &&
       content_indent.unwrap_or(0) == 0 &&
       is_doc_marker_line(raw) {
-      raise ParseError::InvalidIndent(pos={ line: line.number, column: 1 })
+      raise ParseError::InvalidIndent(pos={ line: line.number, column: 1, })
     }
     combined = candidate
     if terminates {
@@ -1104,9 +1104,9 @@ fn is_terminated_single(text : String) -> Bool {
 fn parse_explicit_entry(
   ctx : TagContext,
   lines : Array[Line],
-  index : Int,
-  indent : Int,
-) -> ((Yaml, Yaml), Int) raise ParseError {
+  index : Int32,
+  indent : Int32,
+) -> ((Yaml, Yaml), Int32) raise ParseError {
   let line = lines[index]
   let rest = drop_first_char(block_content(line)).trim_start().to_string()
   if rest is "" {
@@ -1222,13 +1222,13 @@ fn is_plain_scalar_start(text : String) -> Bool {
 ///|
 fn collect_plain_continuation(
   lines : Array[Line],
-  index : Int,
-  indent : Int,
+  index : Int32,
+  indent : Int32,
   allow_same_indent : Bool,
-) -> (Array[String], Int) raise ParseError {
+) -> (Array[String], Int32) raise ParseError {
   let parts : Array[String] = []
   let mut i = index
-  let mut base_indent : Int? = None
+  let mut base_indent : Int32? = None
   while i < lines.length() {
     let line = lines[i]
     let raw = line.raw.view(start_offset=line.indent).to_string()
@@ -1320,7 +1320,7 @@ fn fold_plain_lines(first : String, rest : Array[String]) -> String {
 fn parse_block_indicator(
   text : String,
   pos : Position,
-) -> (Char, Chomp, Int?)? raise ParseError {
+) -> (Char, Chomp, Int32?)? raise ParseError {
   let trimmed = text.trim().to_string()
   if trimmed is "" {
     return None
@@ -1331,7 +1331,7 @@ fn parse_block_indicator(
     return None
   }
   let mut chomp = Chomp::Clip
-  let mut indent : Int? = None
+  let mut indent : Int32? = None
   let mut chomp_set = false
   let mut indent_set = false
   let mut i = 1
@@ -1385,9 +1385,9 @@ fn try_parse_block_scalar(
   ctx : TagContext,
   rest : String,
   lines : Array[Line],
-  index : Int,
-  parent_indent : Int,
-) -> (Yaml, Int)? raise ParseError {
+  index : Int32,
+  parent_indent : Int32,
+) -> (Yaml, Int32)? raise ParseError {
   let scanner = Scanner::new(rest)
   scanner.skip_ws_and_comments()
   if parse_alias(scanner) is Some(_) {
@@ -1408,8 +1408,8 @@ fn try_parse_block_scalar(
     lines.last()
   }
   let pos = match pos_line {
-    None => { line: 1, column: 1 }
-    Some(line) => { line: line.number, column: line.indent + 1 }
+    None => { line: 1, column: 1, }
+    Some(line) => { line: line.number, column: line.indent + 1, }
   }
   match parse_block_indicator(tail, pos) {
     None => None
@@ -1430,17 +1430,17 @@ fn try_parse_block_scalar(
 ///|
 fn parse_block_scalar(
   lines : Array[Line],
-  index : Int,
-  parent_indent : Int,
+  index : Int32,
+  parent_indent : Int32,
   style : Char,
   chomp : Chomp,
-  indent_hint : Int?,
-) -> (String, Int) raise ParseError {
+  indent_hint : Int32?,
+) -> (String, Int32) raise ParseError {
   let mut i = index
-  let mut content_indent : Int? = None
+  let mut content_indent : Int32? = None
   let collected : Array[String] = []
   let mut pending_blank = 0
-  let mut max_blank_indent : Int? = None
+  let mut max_blank_indent : Int32? = None
   while i < lines.length() {
     let line = lines[i]
     let tab_indent_threshold = match content_indent {
@@ -1671,7 +1671,7 @@ fn trim_trailing_newlines(text : String) -> String {
 }
 
 ///|
-fn is_seq_line(line : Line, indent : Int) -> Bool {
+fn is_seq_line(line : Line, indent : Int32) -> Bool {
   let line_indent = block_indent(line)
   if line_indent != indent {
     return false
@@ -1685,7 +1685,7 @@ fn is_seq_line(line : Line, indent : Int) -> Bool {
 }
 
 ///|
-fn is_map_line(line : Line, indent : Int) -> Bool {
+fn is_map_line(line : Line, indent : Int32) -> Bool {
   let line_indent = block_indent(line)
   if line_indent != indent {
     return false
@@ -1695,7 +1695,7 @@ fn is_map_line(line : Line, indent : Int) -> Bool {
 }
 
 ///|
-fn is_map_start(lines : Array[Line], index : Int, indent : Int) -> Bool {
+fn is_map_start(lines : Array[Line], index : Int32, indent : Int32) -> Bool {
   let line = lines[index]
   let line_indent = block_indent(line)
   if line_indent != indent {
@@ -1707,7 +1707,7 @@ fn is_map_start(lines : Array[Line], index : Int, indent : Int) -> Bool {
 }
 
 ///|
-fn is_explicit_key_line(line : Line, indent : Int) -> Bool {
+fn is_explicit_key_line(line : Line, indent : Int32) -> Bool {
   let line_indent = block_indent(line)
   if line_indent != indent {
     return false
@@ -1717,7 +1717,7 @@ fn is_explicit_key_line(line : Line, indent : Int) -> Bool {
 }
 
 ///|
-fn is_value_line(line : Line, indent : Int) -> Bool {
+fn is_value_line(line : Line, indent : Int32) -> Bool {
   let line_indent = block_indent(line)
   if line_indent != indent {
     return false
@@ -1727,7 +1727,11 @@ fn is_value_line(line : Line, indent : Int) -> Bool {
 }
 
 ///|
-fn is_value_line_after(lines : Array[Line], index : Int, indent : Int) -> Bool {
+fn is_value_line_after(
+  lines : Array[Line],
+  index : Int32,
+  indent : Int32,
+) -> Bool {
   let next_index = next_non_empty(lines, index + 1)
   if next_index >= lines.length() {
     return false
@@ -1806,7 +1810,7 @@ fn split_key_value(line : Line) -> (String, String) raise ParseError {
   match split_key_value_opt(content) {
     None =>
       raise ParseError::UnexpectedChar(
-        pos={ line: line.number, column: line.indent + 1 },
+        pos={ line: line.number, column: line.indent + 1, },
         found=':',
       )
     Some(pair) => pair
@@ -1950,7 +1954,7 @@ fn collect_lines(input : String) -> Array[Line] {
     let content = line.view(start_offset=indent).to_string()
     let stripped = strip_inline_comment(content)
     let trimmed = stripped.trim_end().to_string()
-    lines.push({ number, indent, has_tab_indent, raw: line, content: trimmed })
+    lines.push({ number, indent, has_tab_indent, raw: line, content: trimmed, })
     number = number + 1
   }
   lines

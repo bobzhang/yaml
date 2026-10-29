@@ -16,6 +16,8 @@ def find_runner():
     if env_runner and os.path.exists(env_runner):
         return env_runner
     candidates = [
+        os.path.join(REPO_ROOT, "_build", "native", "debug", "build", "cmd", "yamlsuite", "yamlsuite.exe"),
+        os.path.join(REPO_ROOT, "_build", "native", "release", "build", "cmd", "yamlsuite", "yamlsuite.exe"),
         os.path.join(REPO_ROOT, "target", "native", "debug", "cmd", "yamlsuite", "yamlsuite"),
         os.path.join(REPO_ROOT, "target", "native", "release", "cmd", "yamlsuite", "yamlsuite"),
         os.path.join(REPO_ROOT, "target", "native", "release", "build", "cmd", "yamlsuite", "yamlsuite.exe"),

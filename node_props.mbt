@@ -269,7 +269,7 @@ fn validate_tagged_omap(tag : String, value : Yaml) -> Yaml raise ParseError {
 }
 
 ///|
-fn find_yaml_index(items : Array[Yaml], key : Yaml) -> Int? {
+fn find_yaml_index(items : Array[Yaml], key : Yaml) -> Int32? {
   for i in 0..<items.length() {
     if items[i] == key {
       return Some(i)

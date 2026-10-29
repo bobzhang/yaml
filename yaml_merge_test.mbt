@@ -7,23 +7,23 @@ test "merge key with anchor" {
     #|  b: 3
     #|
   assert_eq(
-    parse_yaml(input),
-    Yaml::Map([
+    @yaml.parse_yaml(input),
+    @yaml.Yaml::Map([
       (
-        Yaml::String("base"),
-        Yaml::Anchor(
+        @yaml.Yaml::String("base"),
+        @yaml.Yaml::Anchor(
           name="base",
-          value=Yaml::Map([
-            (Yaml::String("a"), Yaml::Int(1)),
-            (Yaml::String("b"), Yaml::Int(2)),
+          value=@yaml.Yaml::Map([
+            (@yaml.Yaml::String("a"), @yaml.Yaml::Int(1)),
+            (@yaml.Yaml::String("b"), @yaml.Yaml::Int(2)),
           ]),
         ),
       ),
       (
-        Yaml::String("child"),
-        Yaml::Map([
-          (Yaml::String("a"), Yaml::Int(1)),
-          (Yaml::String("b"), Yaml::Int(3)),
+        @yaml.Yaml::String("child"),
+        @yaml.Yaml::Map([
+          (@yaml.Yaml::String("a"), @yaml.Yaml::Int(1)),
+          (@yaml.Yaml::String("b"), @yaml.Yaml::Int(3)),
         ]),
       ),
     ]),
@@ -40,28 +40,28 @@ test "merge key with sequence" {
     #|  c: 3
     #|
   assert_eq(
-    parse_yaml(input),
-    Yaml::Map([
+    @yaml.parse_yaml(input),
+    @yaml.Yaml::Map([
       (
-        Yaml::String("base"),
-        Yaml::Anchor(
+        @yaml.Yaml::String("base"),
+        @yaml.Yaml::Anchor(
           name="base",
-          value=Yaml::Map([(Yaml::String("a"), Yaml::Int(1))]),
+          value=@yaml.Yaml::Map([(@yaml.Yaml::String("a"), @yaml.Yaml::Int(1))]),
         ),
       ),
       (
-        Yaml::String("extra"),
-        Yaml::Anchor(
+        @yaml.Yaml::String("extra"),
+        @yaml.Yaml::Anchor(
           name="extra",
-          value=Yaml::Map([(Yaml::String("b"), Yaml::Int(2))]),
+          value=@yaml.Yaml::Map([(@yaml.Yaml::String("b"), @yaml.Yaml::Int(2))]),
         ),
       ),
       (
-        Yaml::String("child"),
-        Yaml::Map([
-          (Yaml::String("a"), Yaml::Int(1)),
-          (Yaml::String("b"), Yaml::Int(2)),
-          (Yaml::String("c"), Yaml::Int(3)),
+        @yaml.Yaml::String("child"),
+        @yaml.Yaml::Map([
+          (@yaml.Yaml::String("a"), @yaml.Yaml::Int(1)),
+          (@yaml.Yaml::String("b"), @yaml.Yaml::Int(2)),
+          (@yaml.Yaml::String("c"), @yaml.Yaml::Int(3)),
         ]),
       ),
     ]),

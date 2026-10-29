@@ -1,23 +1,23 @@
 ///|
 priv struct Scanner {
   input : String
-  mut pos : Int
-  mut line : Int
-  mut column : Int
+  mut pos : Int32
+  mut line : Int32
+  mut column : Int32
 }
 
 ///|
 fn Scanner::new(input : String) -> Scanner {
-  { input, pos: 0, line: 1, column: 1 }
+  { input, pos: 0, line: 1, column: 1, }
 }
 
 ///|
 fn Scanner::position(self : Scanner) -> Position {
-  { line: self.line, column: self.column }
+  { line: self.line, column: self.column, }
 }
 
 ///|
-fn Scanner::offset(self : Scanner) -> Int {
+fn Scanner::offset(self : Scanner) -> Int32 {
   self.pos
 }
 

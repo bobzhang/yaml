@@ -1,0 +1,36 @@
+name: MoonBit and YAML conformance
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: yaml/yaml-test-suite
+          ref: 6ad3d2c62885d82fc349026c136ef560838fdf3d
+          path: yaml-test-suite-data
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install MoonBit
+        run: |
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
+      - name: Check and test all backends
+        run: |
+          moon version --all
+          moon check --target all
+          moon test --target all
+          moon fmt --check
+      - name: Run pinned YAML conformance corpus
+        run: |
+          moon build --target native
+          python3 scripts/run_yaml_suite.py

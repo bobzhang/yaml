@@ -6,8 +6,11 @@ test "tag directives expand handles" {
     #|!yaml!str hello
     #|
   assert_eq(
-    parse_yaml(input),
-    Yaml::Tagged(tag="tag:yaml.org,2002:str", value=Yaml::String("hello")),
+    @yaml.parse_yaml(input),
+    @yaml.Yaml::Tagged(
+      tag="tag:yaml.org,2002:str",
+      value=@yaml.Yaml::String("hello"),
+    ),
   )
 }
 
@@ -15,8 +18,8 @@ test "tag directives expand handles" {
 test "verbatim tags" {
   let input = "!<tag:yaml.org,2002:int> 3"
   assert_eq(
-    parse_yaml(input),
-    Yaml::Tagged(tag="tag:yaml.org,2002:int", value=Yaml::Int(3)),
+    @yaml.parse_yaml(input),
+    @yaml.Yaml::Tagged(tag="tag:yaml.org,2002:int", value=@yaml.Yaml::Int(3)),
   )
 }
 
@@ -27,7 +30,7 @@ test "yaml directive" {
     #|---
     #|true
     #|
-  assert_eq(parse_yaml(input), Yaml::Bool(true))
+  assert_eq(@yaml.parse_yaml(input), @yaml.Yaml::Bool(true))
 }
 
 ///|
@@ -37,8 +40,12 @@ test "reject unsupported yaml version" {
     #|---
     #|true
     #|
-  let result : Result[Yaml, ParseError] = try? parse_yaml(input)
-  guard result is Err(ParseError::InvalidDirective(_)) else {
+  let result : Result[@yaml.Yaml, @yaml.ParseError] = Ok(
+    @yaml.parse_yaml(input),
+  ) catch {
+    err => Err(err)
+  }
+  guard result is Err(@yaml.ParseError::InvalidDirective(_)) else {
     fail("expected invalid directive error")
   }
 }
@@ -50,5 +57,5 @@ test "ignore unknown directives" {
     #|---
     #|true
     #|
-  assert_eq(parse_yaml(input), Yaml::Bool(true))
+  assert_eq(@yaml.parse_yaml(input), @yaml.Yaml::Bool(true))
 }
