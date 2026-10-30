@@ -2,7 +2,7 @@
 fn parse_double_quoted(scanner : Scanner) -> String raise ParseError {
   scanner.expect('"')
   let lines : Array[String] = []
-  let sb = StringBuilder::new()
+  let sb = StringBuilder()
   while true {
     match scanner.peek() {
       None => raise ParseError::UnexpectedEof(pos=scanner.position())
@@ -51,7 +51,7 @@ fn parse_double_quoted(scanner : Scanner) -> String raise ParseError {
 fn parse_single_quoted(scanner : Scanner) -> String raise ParseError {
   scanner.expect('\'')
   let lines : Array[String] = []
-  let sb = StringBuilder::new()
+  let sb = StringBuilder()
   while true {
     match scanner.peek() {
       None => raise ParseError::UnexpectedEof(pos=scanner.position())
@@ -90,14 +90,14 @@ fn parse_single_quoted(scanner : Scanner) -> String raise ParseError {
 ///|
 fn parse_plain_scalar(scanner : Scanner) -> String raise ParseError {
   let lines : Array[String] = []
-  let sb = StringBuilder::new()
+  let sb = StringBuilder()
   let mut prev_space = true
   let mut ended_on_newline = false
   while scanner.peek() is Some(c) &&
         !is_flow_plain_break(scanner, c, prev_space) {
     if c is '\n' || c is '\r' {
       ignore(scanner.advance())
-      lines.push(sb.to_string().trim_end().to_string())
+      lines.push(sb.to_string().trim_end().to_owned())
       sb.reset()
       ended_on_newline = true
       if !skip_flow_plain_line(scanner, lines) {
@@ -115,7 +115,7 @@ fn parse_plain_scalar(scanner : Scanner) -> String raise ParseError {
     scanner.skip_comment()
   }
   if lines.length() == 0 {
-    let raw = sb.to_string().trim_end().to_string()
+    let raw = sb.to_string().trim_end().to_owned()
     if raw is "" {
       match scanner.peek() {
         None => raise ParseError::UnexpectedEof(pos=scanner.position())
@@ -126,7 +126,7 @@ fn parse_plain_scalar(scanner : Scanner) -> String raise ParseError {
     raw
   } else {
     if !ended_on_newline {
-      lines.push(sb.to_string().trim_end().to_string())
+      lines.push(sb.to_string().trim_end().to_owned())
     }
     let folded = fold_lines(lines)
     if folded is "" {
@@ -160,7 +160,7 @@ fn fold_quoted_lines(lines : Array[String]) -> String {
     if count < 0 {
       count = 0
     }
-    let sb = StringBuilder::new()
+    let sb = StringBuilder()
     for _ in 0..<count {
       sb.write_char('\n')
     }
@@ -189,7 +189,7 @@ fn fold_quoted_lines(lines : Array[String]) -> String {
       }
     }
   }
-  let sb = StringBuilder::new()
+  let sb = StringBuilder()
   let mut last_ended_space = false
   let mut i = 0
   if i < end && lines[i] is "" {
@@ -242,7 +242,7 @@ fn fold_quoted_lines(lines : Array[String]) -> String {
 ///|
 fn unescape_double_quoted(text : String) -> String raise ParseError {
   let scanner = Scanner::new(text)
-  let sb = StringBuilder::new()
+  let sb = StringBuilder()
   while scanner.peek() is Some(c) {
     if c is '\\' {
       ignore(scanner.advance())
@@ -277,7 +277,7 @@ fn trim_end_whitespace(text : String) -> String {
   if end == chars.length() {
     return text
   }
-  let sb = StringBuilder::new()
+  let sb = StringBuilder()
   for i in 0..<end {
     sb.write_char(chars[i])
   }
@@ -517,13 +517,13 @@ fn parse_number(raw : String) -> Yaml? {
   }
   let (sign, body) = strip_sign(normalized)
   if body.has_prefix("0x") || body.has_prefix("0X") {
-    return parse_int_base(body.view(start_offset=2).to_string(), 16, sign)
+    return parse_int_base(body.clamped_view(start=2).to_owned(), 16, sign)
   }
   if body.has_prefix("0o") || body.has_prefix("0O") {
-    return parse_int_base(body.view(start_offset=2).to_string(), 8, sign)
+    return parse_int_base(body.clamped_view(start=2).to_owned(), 8, sign)
   }
   if body.has_prefix("0b") || body.has_prefix("0B") {
-    return parse_int_base(body.view(start_offset=2).to_string(), 2, sign)
+    return parse_int_base(body.clamped_view(start=2).to_owned(), 2, sign)
   }
   let has_float = lowered.contains(".") ||
     lowered.contains("e") ||
@@ -546,9 +546,9 @@ fn parse_number(raw : String) -> Yaml? {
 ///|
 fn strip_sign(value : String) -> (Int32, String) {
   if value.has_prefix("-") {
-    (-1, value.view(start_offset=1).to_string())
+    (-1, value.clamped_view(start=1).to_owned())
   } else if value.has_prefix("+") {
-    (1, value.view(start_offset=1).to_string())
+    (1, value.clamped_view(start=1).to_owned())
   } else {
     (1, value)
   }

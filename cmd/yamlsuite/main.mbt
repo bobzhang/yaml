@@ -75,7 +75,7 @@ fn pair_to_json(pair : (@yaml.Yaml, @yaml.Yaml)) -> Json {
 
 ///|
 fn tree_obj(kind : String, fields : Array[(String, Json)]) -> Json {
-  let obj : Map[String, Json] = {}
+  let obj : Map[String, Json] = Map([])
   obj["type"] = Json::string(kind)
   for field in fields {
     let (key, value) = field
@@ -133,7 +133,7 @@ fn yaml_to_json_value(value : @yaml.Yaml) -> Json raise @yaml.ParseError {
 fn map_to_json(
   items : Array[(@yaml.Yaml, @yaml.Yaml)],
 ) -> Json raise @yaml.ParseError {
-  let obj : Map[String, Json] = {}
+  let obj : Map[String, Json] = Map([])
   for pair in items {
     let (key, value) = pair
     match key_to_string(key) {
@@ -152,7 +152,7 @@ fn map_to_json(
 fn set_map_to_json(
   items : Array[(@yaml.Yaml, @yaml.Yaml)],
 ) -> Json raise @yaml.ParseError {
-  let obj : Map[String, Json] = {}
+  let obj : Map[String, Json] = Map([])
   for pair in items {
     let (key, _value) = pair
     match key_to_string(key) {

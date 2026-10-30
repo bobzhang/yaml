@@ -19,9 +19,9 @@ fn block_indent(line : Line) -> Int32 {
 ///|
 fn block_content(line : Line) -> String {
   if line.has_tab_indent && line.indent > 0 {
-    let raw = line.raw.view(start_offset=line.indent + 1).to_string()
+    let raw = line.raw.clamped_view(start=line.indent + 1).to_owned()
     let stripped = strip_inline_comment(raw)
-    stripped.trim_end().to_string()
+    stripped.trim_end().to_owned()
   } else {
     line.content
   }
@@ -33,13 +33,13 @@ fn drop_first_char(text : String) -> String {
   if chars.length() <= 1 {
     ""
   } else {
-    text.view(start_offset=1).to_string()
+    text.clamped_view(start=1).to_owned()
   }
 }
 
 ///|
 fn make_virtual_line(number : Int32, indent : Int32, content : String) -> Line {
-  let sb = StringBuilder::new()
+  let sb = StringBuilder()
   for _ in 0..<indent {
     sb.write_char(' ')
   }
@@ -352,7 +352,7 @@ fn parse_block_map(
     } else if split_key_value_opt(line_content) is Some(_) {
       let (key_text, value_text) = split_key_value(line)
       let key = parse_inline_key(ctx, key_text)
-      let trimmed_value = value_text.trim_start().to_string()
+      let trimmed_value = value_text.trim_start().to_owned()
       if trimmed_value.has_prefix("- ") {
         raise ParseError::InvalidIndent(pos={
           line: line.number,
@@ -389,7 +389,7 @@ fn parse_block_map(
 
 ///|
 fn parse_inline_value(ctx : TagContext, text : String) -> Yaml raise ParseError {
-  let trimmed = text.trim().to_string()
+  let trimmed = text.trim().to_owned()
   if trimmed is "" {
     return Yaml::Null
   }
@@ -405,10 +405,10 @@ fn parse_inline_value(ctx : TagContext, text : String) -> Yaml raise ParseError 
       }
       let rest_pos = scanner.position()
       let rest = trimmed
-        .view(start_offset=scanner.offset())
-        .to_string()
+        .clamped_view(start=scanner.offset())
+        .to_owned()
         .trim_start()
-        .to_string()
+        .to_owned()
       let has_props = tag is Some(_) || anchor is Some(_)
       let value = if rest is "" {
         Yaml::Null
@@ -439,12 +439,12 @@ fn parse_inline_node_multiline(
   text : String,
   allow_same_indent_props : Bool,
 ) -> (Yaml, Int32) raise ParseError {
-  let trimmed = text.trim().to_string()
+  let trimmed = text.trim().to_owned()
   let mut inline_comment = false
   if line_index < lines.length() {
     let raw_line = lines[line_index].raw
-      .view(start_offset=lines[line_index].indent)
-      .to_string()
+      .clamped_view(start=lines[line_index].indent)
+      .to_owned()
     let stripped = strip_inline_comment(raw_line)
     if stripped.length() < raw_line.length() {
       inline_comment = true
@@ -465,10 +465,10 @@ fn parse_inline_node_multiline(
       }
       let rest_pos = scanner.position()
       let rest = trimmed
-        .view(start_offset=scanner.offset())
-        .to_string()
+        .clamped_view(start=scanner.offset())
+        .to_owned()
         .trim_start()
-        .to_string()
+        .to_owned()
       let has_props = tag is Some(_) || anchor is Some(_)
       if rest is "" {
         let value = Yaml::Null
@@ -532,7 +532,7 @@ fn parse_inline_node_multiline(
 
 ///|
 fn parse_inline_key(ctx : TagContext, text : String) -> Yaml raise ParseError {
-  let trimmed = text.trim().to_string()
+  let trimmed = text.trim().to_owned()
   if trimmed is "" {
     Yaml::Null
   } else {
@@ -551,8 +551,8 @@ fn parse_value_from_text(
 ) -> (Yaml, Int32) raise ParseError {
   let raw_value = if value_text == block_content(lines[line_index]) {
     lines[line_index].raw
-    .view(start_offset=lines[line_index].indent)
-    .to_string()
+    .clamped_view(start=lines[line_index].indent)
+    .to_owned()
   } else {
     value_text
   }
@@ -561,8 +561,8 @@ fn parse_value_from_text(
   } else {
     indent
   }
-  let trimmed_value = value_text.trim_start().to_string()
-  let raw_trimmed = raw_value.trim_start().to_string()
+  let trimmed_value = value_text.trim_start().to_owned()
+  let raw_trimmed = raw_value.trim_start().to_owned()
   if trimmed_value is "" {
     let next_index = next_non_empty(lines, line_index + 1)
     if next_index >= lines.length() {
@@ -720,10 +720,10 @@ fn try_parse_props_only(
   let (tag, anchor) = parse_node_props(ctx, scanner)
   scanner.skip_ws_and_comments()
   let rest = text
-    .view(start_offset=scanner.offset())
-    .to_string()
+    .clamped_view(start=scanner.offset())
+    .to_owned()
     .trim_start()
-    .to_string()
+    .to_owned()
   if rest is "" && (tag is Some(_) || anchor is Some(_)) {
     let next_index = next_non_empty(lines, line_index + 1)
     if next_index < lines.length() {
@@ -775,10 +775,10 @@ fn parse_props_only(
   let (tag, anchor) = parse_node_props(ctx, scanner)
   scanner.skip_ws_and_comments()
   let rest = text
-    .view(start_offset=scanner.offset())
-    .to_string()
+    .clamped_view(start=scanner.offset())
+    .to_owned()
     .trim()
-    .to_string()
+    .to_owned()
   if rest is "" && (tag is Some(_) || anchor is Some(_)) {
     Some((tag, anchor))
   } else {
@@ -801,10 +801,10 @@ fn try_parse_quoted_props(
   let (tag, anchor) = parse_node_props(ctx, scanner)
   scanner.skip_ws_and_comments()
   let rest = text
-    .view(start_offset=scanner.offset())
-    .to_string()
+    .clamped_view(start=scanner.offset())
+    .to_owned()
     .trim_start()
-    .to_string()
+    .to_owned()
   if rest.has_prefix("\"") && !is_terminated_double(rest) {
     let (combined, next) = collect_quoted_multiline(
       lines,
@@ -845,10 +845,10 @@ fn try_parse_flow_multiline(
   let (tag, anchor) = parse_node_props(ctx, scanner)
   scanner.skip_ws_and_comments()
   let rest = text
-    .view(start_offset=scanner.offset())
-    .to_string()
+    .clamped_view(start=scanner.offset())
+    .to_owned()
     .trim_start()
-    .to_string()
+    .to_owned()
   if rest.has_prefix("[") || rest.has_prefix("{") {
     let base_indent = lines[line_index].indent
     let (combined, next) = collect_flow_multiline(
@@ -867,7 +867,7 @@ fn collect_flow_multiline(
   first : String,
   base_indent : Int32,
 ) -> (String, Int32) raise ParseError {
-  let sb = StringBuilder::new()
+  let sb = StringBuilder()
   sb.write_string(first)
   let mut depth = 0
   let mut in_single = false
@@ -890,7 +890,7 @@ fn collect_flow_multiline(
       })
     }
     if !(line.content is "") && line.indent <= base_indent {
-      let trimmed = line.content.trim().to_string()
+      let trimmed = line.content.trim().to_owned()
       if !(trimmed is "]" || trimmed is "}") {
         raise ParseError::InvalidIndent(pos={
           line: line.number,
@@ -899,7 +899,7 @@ fn collect_flow_multiline(
       }
     }
     sb.write_char('\n')
-    let line_text = line.raw.view(start_offset=line.indent).to_string()
+    let line_text = line.raw.clamped_view(start=line.indent).to_owned()
     sb.write_string(line_text)
     let (next_depth, next_single, next_double) = scan_flow_depth(
       line_text, depth, in_single, in_double,
@@ -979,7 +979,7 @@ fn collect_quoted_multiline(
   let mut i = index + 1
   while i < lines.length() {
     let line = lines[i]
-    let raw = line.raw.view(start_offset=line.indent).to_string()
+    let raw = line.raw.clamped_view(start=line.indent).to_owned()
     if raw.trim() is "" {
       combined = combined + "\n"
       i = i + 1
@@ -1108,7 +1108,7 @@ fn parse_explicit_entry(
   indent : Int32,
 ) -> ((Yaml, Yaml), Int32) raise ParseError {
   let line = lines[index]
-  let rest = drop_first_char(block_content(line)).trim_start().to_string()
+  let rest = drop_first_char(block_content(line)).trim_start().to_owned()
   if rest is "" {
     let next_index = next_non_empty(lines, index + 1)
     if next_index >= lines.length() || lines[next_index].indent < indent {
@@ -1209,7 +1209,7 @@ fn is_plain_scalar_start(text : String) -> Bool {
   if text is "" {
     return false
   }
-  let trimmed = text.trim_start().to_string()
+  let trimmed = text.trim_start().to_owned()
   !(trimmed.has_prefix("\"") ||
   trimmed.has_prefix("'") ||
   trimmed.has_prefix("[") ||
@@ -1231,7 +1231,7 @@ fn collect_plain_continuation(
   let mut base_indent : Int32? = None
   while i < lines.length() {
     let line = lines[i]
-    let raw = line.raw.view(start_offset=line.indent).to_string()
+    let raw = line.raw.clamped_view(start=line.indent).to_owned()
     if raw.trim() is "" {
       let next_index = next_non_empty(lines, i + 1)
       if next_index >= lines.length() {
@@ -1272,7 +1272,7 @@ fn collect_plain_continuation(
     } else {
       line.indent
     }
-    let text = line.raw.view(start_offset=slice_start).to_string()
+    let text = line.raw.clamped_view(start=slice_start).to_owned()
     if has_plain_mapping_break(text) {
       raise ParseError::InvalidIndent(pos={
         line: line.number,
@@ -1280,7 +1280,7 @@ fn collect_plain_continuation(
       })
     }
     let stripped = strip_inline_comment(text)
-    let trimmed = stripped.trim_end().to_string()
+    let trimmed = stripped.trim_end().to_owned()
     parts.push(trimmed)
     if stripped.length() < text.length() {
       i = i + 1
@@ -1321,7 +1321,7 @@ fn parse_block_indicator(
   text : String,
   pos : Position,
 ) -> (Char, Chomp, Int32?)? raise ParseError {
-  let trimmed = text.trim().to_string()
+  let trimmed = text.trim().to_owned()
   if trimmed is "" {
     return None
   }
@@ -1396,10 +1396,10 @@ fn try_parse_block_scalar(
   let (tag, anchor) = parse_node_props(ctx, scanner)
   scanner.skip_ws_and_comments()
   let tail = rest
-    .view(start_offset=scanner.offset())
-    .to_string()
+    .clamped_view(start=scanner.offset())
+    .to_owned()
     .trim_start()
-    .to_string()
+    .to_owned()
   let pos_line = if lines.length() == 0 {
     None
   } else if index > 0 && index - 1 < lines.length() {
@@ -1460,7 +1460,7 @@ fn parse_block_scalar(
     if i == lines.length() - 1 && line.raw is "" {
       break
     }
-    let raw_content = line.raw.view(start_offset=line.indent).to_string()
+    let raw_content = line.raw.clamped_view(start=line.indent).to_owned()
     let mut treat_as_blank = is_space_only(raw_content)
     match content_indent {
       Some(indent) => if line.indent > indent { treat_as_blank = false }
@@ -1525,7 +1525,7 @@ fn parse_block_scalar(
     }
     pending_blank = 0
     let raw = line.raw
-    let text = raw.view(start_offset=indent).to_string()
+    let text = raw.clamped_view(start=indent).to_owned()
     collected.push(text)
     i = i + 1
   }
@@ -1567,7 +1567,7 @@ fn is_space_only(text : String) -> Bool {
 
 ///|
 fn join_lines(lines : Array[String]) -> String {
-  let sb = StringBuilder::new()
+  let sb = StringBuilder()
   for idx in 0..<lines.length() {
     if idx > 0 {
       sb.write_char('\n')
@@ -1579,7 +1579,7 @@ fn join_lines(lines : Array[String]) -> String {
 
 ///|
 fn fold_lines(lines : Array[String]) -> String {
-  let sb = StringBuilder::new()
+  let sb = StringBuilder()
   let mut prev_blank = false
   for idx in 0..<lines.length() {
     let line = lines[idx]
@@ -1599,7 +1599,7 @@ fn fold_lines(lines : Array[String]) -> String {
 
 ///|
 fn fold_block_lines(lines : Array[String]) -> String {
-  let sb = StringBuilder::new()
+  let sb = StringBuilder()
   for idx in 0..<lines.length() {
     let line = lines[idx]
     let is_blank = line is ""
@@ -1663,7 +1663,7 @@ fn trim_trailing_newlines(text : String) -> String {
   if end == chars.length() {
     return text
   }
-  let sb = StringBuilder::new()
+  let sb = StringBuilder()
   for i in 0..<end {
     sb.write_char(chars[i])
   }
@@ -1753,7 +1753,7 @@ fn split_indicator_rest(content : String, indicator : Char) -> (Bool, String) {
     }
     i = i + 1
   }
-  let sb = StringBuilder::new()
+  let sb = StringBuilder()
   for j in i..<chars.length() {
     sb.write_char(chars[j])
   }
@@ -1825,7 +1825,7 @@ fn split_key_value_opt(content : String) -> (String, String)? {
   let mut depth = 0
   let mut i = 0
   let mut found = false
-  let key_sb = StringBuilder::new()
+  let key_sb = StringBuilder()
   let mut value_start = 0
   let mut prev_space = true
   while i < chars.length() {
@@ -1920,8 +1920,8 @@ fn split_key_value_opt(content : String) -> (String, String)? {
   if !found {
     return None
   }
-  let key = key_sb.to_string().trim().to_string()
-  let value_sb = StringBuilder::new()
+  let key = key_sb.to_string().trim().to_owned()
+  let value_sb = StringBuilder()
   for j in value_start..<chars.length() {
     value_sb.write_char(chars[j])
   }
@@ -1936,7 +1936,7 @@ fn collect_lines(input : String) -> Array[Line] {
   let lines : Array[Line] = []
   let mut number = 1
   for line_view in normalized.split("\n") {
-    let line = line_view.to_string()
+    let line = line_view.to_owned()
     let mut indent = 0
     let mut has_tab_indent = false
     let chars = line.to_array()
@@ -1951,9 +1951,9 @@ fn collect_lines(input : String) -> Array[Line] {
         break
       }
     }
-    let content = line.view(start_offset=indent).to_string()
+    let content = line.clamped_view(start=indent).to_owned()
     let stripped = strip_inline_comment(content)
-    let trimmed = stripped.trim_end().to_string()
+    let trimmed = stripped.trim_end().to_owned()
     lines.push({ number, indent, has_tab_indent, raw: line, content: trimmed, })
     number = number + 1
   }
@@ -1967,7 +1967,7 @@ fn strip_inline_comment(line : String) -> String {
   let mut in_single = false
   let mut in_double = false
   let mut prev_space = true
-  let sb = StringBuilder::new()
+  let sb = StringBuilder()
   while i < chars.length() {
     let c = chars[i]
     if in_single {
