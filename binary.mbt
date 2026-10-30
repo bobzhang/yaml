@@ -73,7 +73,7 @@ pub fn decode_base64(tag : String, raw : String) -> Bytes raise ParseError {
 ///|
 pub fn encode_base64(bytes : Bytes) -> String {
   let alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
-  let sb = StringBuilder::new()
+  let sb = StringBuilder()
   let len = bytes.length()
   let mut i = 0
   while i + 2 < len {

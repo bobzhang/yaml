@@ -31,10 +31,24 @@ pub(all) suberror ParseError {
   InvalidTagValue(tag~ : String, value~ : String)
   MultipleDocuments(count~ : Int32)
   NotImplemented(feature~ : String)
-} derive(Eq, Show, ToJson, @debug.Debug)
+} derive(Eq, ToJson, @debug.Debug)
+pub fn ParseError::equal(Self, Self) -> Bool
+pub fn ParseError::not_equal(Self, Self) -> Bool
+pub fn ParseError::output(Self, &Logger) -> Unit
+pub fn ParseError::to_json(Self) -> Json
+pub fn ParseError::to_repr(Self) -> @debug.Repr
+pub fn ParseError::to_string(Self) -> String
+pub impl Show for ParseError
 
 // Types and methods
-type Position derive(Eq, Show, ToJson, @debug.Debug)
+type Position derive(Eq, ToJson, @debug.Debug)
+pub fn Position::equal(Self, Self) -> Bool
+pub fn Position::not_equal(Self, Self) -> Bool
+pub fn Position::output(Self, &Logger) -> Unit
+pub fn Position::to_json(Self) -> Json
+pub fn Position::to_repr(Self) -> @debug.Repr
+pub fn Position::to_string(Self) -> String
+pub impl Show for Position
 
 pub(all) enum Yaml {
   Null
@@ -48,7 +62,14 @@ pub(all) enum Yaml {
   Alias(String)
   Anchor(name~ : String, value~ : Yaml)
   Tagged(tag~ : String, value~ : Yaml)
-} derive(Eq, Show, ToJson, @debug.Debug)
+} derive(Eq, ToJson, @debug.Debug)
+pub fn Yaml::equal(Self, Self) -> Bool
+pub fn Yaml::not_equal(Self, Self) -> Bool
+pub fn Yaml::output(Self, &Logger) -> Unit
+pub fn Yaml::to_json(Self) -> Json
+pub fn Yaml::to_repr(Self) -> @debug.Repr
+pub fn Yaml::to_string(Self) -> String
+pub impl Show for Yaml
 
 // Type aliases
 

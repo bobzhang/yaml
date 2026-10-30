@@ -283,7 +283,7 @@ fn read_tag(ctx : TagContext, scanner : Scanner) -> String raise ParseError {
   if scanner.eat('<') {
     return read_verbatim_tag(scanner)
   }
-  let sb = StringBuilder::new()
+  let sb = StringBuilder()
   while scanner.peek() is Some(c) && !is_prop_break(c) {
     ignore(scanner.advance())
     sb.write_char(c)
@@ -300,7 +300,7 @@ fn read_tag(ctx : TagContext, scanner : Scanner) -> String raise ParseError {
 
 ///|
 fn read_verbatim_tag(scanner : Scanner) -> String raise ParseError {
-  let sb = StringBuilder::new()
+  let sb = StringBuilder()
   while true {
     match scanner.peek() {
       None => raise ParseError::UnexpectedEof(pos=scanner.position())
@@ -330,7 +330,7 @@ fn is_core_tag(tag : String, name : String) -> Bool {
 
 ///|
 fn read_anchor(scanner : Scanner) -> String raise ParseError {
-  let sb = StringBuilder::new()
+  let sb = StringBuilder()
   while scanner.peek() is Some(c) && is_anchor_char(c) {
     ignore(scanner.advance())
     sb.write_char(c)

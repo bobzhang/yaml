@@ -1,6 +1,6 @@
 ///|
 pub fn resolve_aliases(value : Yaml) -> Yaml raise ParseError {
-  let anchors : Map[String, Yaml] = {}
+  let anchors : Map[String, Yaml] = Map([])
   resolve_node(value, anchors)
 }
 

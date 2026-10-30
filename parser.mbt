@@ -25,7 +25,7 @@ pub fn parse_yaml(input : String) -> Yaml raise ParseError {
 ///|
 fn parse_document(input : String) -> Yaml raise ParseError {
   let (ctx, content) = extract_directives(input, true)
-  let trimmed = content.trim().to_string()
+  let trimmed = content.trim().to_owned()
   if trimmed is "" {
     return Yaml::Null
   }
@@ -47,7 +47,7 @@ fn parse_document(input : String) -> Yaml raise ParseError {
 ///|
 fn parse_document_raw(input : String) -> Yaml raise ParseError {
   let (ctx, content) = extract_directives(input, false)
-  let trimmed = content.trim().to_string()
+  let trimmed = content.trim().to_owned()
   if trimmed is "" {
     return Yaml::Null
   }
@@ -69,7 +69,7 @@ fn parse_document_raw(input : String) -> Yaml raise ParseError {
 ///|
 fn strip_bom(input : String) -> String {
   if input.has_prefix("\u{feff}") {
-    input.view(start_offset=1).to_string()
+    input.clamped_view(start=1).to_owned()
   } else {
     input
   }
@@ -88,12 +88,12 @@ fn extract_directives(
   let normalized = input
     .replace_all(old="\r\n", new="\n")
     .replace_all(old="\r", new="\n")
-  let sb = StringBuilder::new()
+  let sb = StringBuilder()
   let mut in_directives = true
   let mut wrote_line = false
   for line_view in normalized.split("\n") {
-    let line = line_view.to_string()
-    let trimmed = line.trim().to_string()
+    let line = line_view.to_owned()
+    let trimmed = line.trim().to_owned()
     if in_directives {
       if trimmed is "" || trimmed.has_prefix("#") {
         continue
@@ -177,7 +177,7 @@ fn is_valid_yaml_version(version : String) -> Bool {
 ///|
 fn split_ws(line : String) -> Array[String] {
   let parts : Array[String] = []
-  let sb = StringBuilder::new()
+  let sb = StringBuilder()
   let mut in_token = false
   for c in line {
     if c.is_whitespace() {
@@ -203,7 +203,7 @@ fn split_documents(input : String) -> Array[String] raise ParseError {
     .replace_all(old="\r\n", new="\n")
     .replace_all(old="\r", new="\n")
   let docs : Array[String] = []
-  let sb = StringBuilder::new()
+  let sb = StringBuilder()
   let mut in_doc = false
   let mut in_directives = false
   let mut saw_directive = false
@@ -233,7 +233,7 @@ fn split_documents(input : String) -> Array[String] raise ParseError {
     }
   }
   for line_view in normalized.split("\n") {
-    let line = line_view.to_string()
+    let line = line_view.to_owned()
     match doc_start_rest(line) {
       Some(rest) => {
         if in_doc {
@@ -278,7 +278,7 @@ fn split_documents(input : String) -> Array[String] raise ParseError {
       content_seen = false
       continue
     }
-    let trimmed = line.trim().to_string()
+    let trimmed = line.trim().to_owned()
     if !in_doc {
       if trimmed is "" || trimmed.has_prefix("#") {
         continue
@@ -339,7 +339,7 @@ fn doc_start_rest(line : String) -> String? {
   if indent > 0 {
     return None
   }
-  let stripped = strip_inline_comment(line).trim().to_string()
+  let stripped = strip_inline_comment(line).trim().to_owned()
   if stripped.has_prefix("---") {
     if stripped.length() == 3 {
       return Some("")
@@ -347,7 +347,7 @@ fn doc_start_rest(line : String) -> String? {
     let next = stripped.get_char(3)
     match next {
       Some(c) if c.is_whitespace() =>
-        Some(stripped.view(start_offset=3).trim_start().to_string())
+        Some(stripped.clamped_view(start=3).trim_start().to_owned())
       _ => None
     }
   } else {
@@ -357,7 +357,7 @@ fn doc_start_rest(line : String) -> String? {
 
 ///|
 fn is_flow_document(text : String) -> Bool {
-  let trimmed = text.trim_start().to_string()
+  let trimmed = text.trim_start().to_owned()
   if !(trimmed.has_prefix("[") || trimmed.has_prefix("{")) {
     return false
   }
@@ -403,8 +403,8 @@ fn is_flow_document(text : String) -> Bool {
         depth = depth - 1
       }
       if depth == 0 {
-        let rest = trimmed.view(start_offset=i + 1).to_string()
-        let rest_trimmed = strip_inline_comment(rest).trim().to_string()
+        let rest = trimmed.clamped_view(start=i + 1).to_owned()
+        let rest_trimmed = strip_inline_comment(rest).trim().to_owned()
         return rest_trimmed is ""
       }
     }
@@ -424,12 +424,12 @@ fn is_doc_end_marker(line : String) -> Bool {
   if indent > 0 {
     return false
   }
-  let stripped = strip_inline_comment(line).trim().to_string()
+  let stripped = strip_inline_comment(line).trim().to_owned()
   stripped is "..."
 }
 
 ///|
 fn is_non_content_line(line : String) -> Bool {
-  let stripped = strip_inline_comment(line).trim().to_string()
+  let stripped = strip_inline_comment(line).trim().to_owned()
   stripped is "" || stripped.has_prefix("#") || stripped.has_prefix("%")
 }

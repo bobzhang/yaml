@@ -7,7 +7,7 @@ priv struct TagContext {
 
 ///|
 fn TagContext::new() -> TagContext {
-  let handles : Map[String, String] = {}
+  let handles : Map[String, String] = Map([])
   handles["!!"] = "tag:yaml.org,2002:"
   handles["!"] = "!"
   { handles, coerce_binary: true, seen_yaml: false, }
@@ -15,7 +15,7 @@ fn TagContext::new() -> TagContext {
 
 ///|
 fn TagContext::new_raw() -> TagContext {
-  let handles : Map[String, String] = {}
+  let handles : Map[String, String] = Map([])
   handles["!!"] = "tag:yaml.org,2002:"
   handles["!"] = "!"
   { handles, coerce_binary: false, seen_yaml: false, }
@@ -41,8 +41,8 @@ fn TagContext::expand(
   match full_tag.rev_find("!") {
     None => decode_tag_uri(full_tag)
     Some(idx) => {
-      let handle = full_tag.view(end_offset=idx + 1).to_string()
-      let suffix = full_tag.view(start_offset=idx + 1).to_string()
+      let handle = full_tag.clamped_view(end=idx + 1).to_owned()
+      let suffix = full_tag.clamped_view(start=idx + 1).to_owned()
       match self.handles.get(handle) {
         Some(prefix) => decode_tag_uri(prefix + suffix)
         None => raise ParseError::InvalidTagValue(tag="tag", value=full_tag)
@@ -54,7 +54,7 @@ fn TagContext::expand(
 ///|
 fn decode_tag_uri(text : String) -> String {
   let chars = text.to_array()
-  let sb = StringBuilder::new()
+  let sb = StringBuilder()
   let mut i = 0
   while i < chars.length() {
     let c = chars[i]
