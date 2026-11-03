@@ -1,10 +1,12 @@
 ///|
+#derive(Eq, ToJson, Debug)
 struct Position {
   line : Int32
   column : Int32
-} derive(Eq, ToJson, Debug)
+}
 
 ///|
+#derive(Eq, ToJson, Debug)
 pub(all) suberror ParseError {
   UnexpectedChar(pos~ : Position, found~ : Char)
   UnexpectedEof(pos~ : Position)
@@ -17,9 +19,10 @@ pub(all) suberror ParseError {
   InvalidTagValue(tag~ : String, value~ : String)
   MultipleDocuments(count~ : Int32)
   NotImplemented(feature~ : String)
-} derive(Eq, ToJson, Debug)
+}
 
 ///|
+#derive(Eq, ToJson, Debug)
 pub(all) enum Yaml {
   Null
   Bool(Bool)
@@ -32,7 +35,7 @@ pub(all) enum Yaml {
   Alias(String)
   Anchor(name~ : String, value~ : Yaml)
   Tagged(tag~ : String, value~ : Yaml)
-} derive(Eq, ToJson, Debug)
+}
 
 ///|
 pub extend ParseError with Debug::{to_repr}
