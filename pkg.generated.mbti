@@ -3,6 +3,7 @@ package "bobzhang/yaml"
 
 import {
   "moonbitlang/core/debug",
+  "moonbitlang/core/json",
 }
 
 // Values
@@ -19,6 +20,7 @@ pub fn parse_yaml_stream_raw(String) -> Array[Yaml] raise ParseError
 pub fn resolve_aliases(Yaml) -> Yaml raise ParseError
 
 // Errors
+#derive(Eq, @debug.Debug, @json.ToJson)
 pub(all) suberror ParseError {
   UnexpectedChar(pos~ : Position, found~ : Char)
   UnexpectedEof(pos~ : Position)
@@ -31,25 +33,27 @@ pub(all) suberror ParseError {
   InvalidTagValue(tag~ : String, value~ : String)
   MultipleDocuments(count~ : Int32)
   NotImplemented(feature~ : String)
-} derive(Eq, ToJson, @debug.Debug)
+}
 pub fn ParseError::equal(Self, Self) -> Bool
 pub fn ParseError::not_equal(Self, Self) -> Bool
 pub fn ParseError::output(Self, &Logger) -> Unit
-pub fn ParseError::to_json(Self) -> Json
+pub fn ParseError::to_json(Self) -> @json.Json
 pub fn ParseError::to_repr(Self) -> @debug.Repr
 pub fn ParseError::to_string(Self) -> String
 pub impl Show for ParseError
 
 // Types and methods
-type Position derive(Eq, ToJson, @debug.Debug)
+#derive(Eq, @debug.Debug, @json.ToJson)
+type Position
 pub fn Position::equal(Self, Self) -> Bool
 pub fn Position::not_equal(Self, Self) -> Bool
 pub fn Position::output(Self, &Logger) -> Unit
-pub fn Position::to_json(Self) -> Json
+pub fn Position::to_json(Self) -> @json.Json
 pub fn Position::to_repr(Self) -> @debug.Repr
 pub fn Position::to_string(Self) -> String
 pub impl Show for Position
 
+#derive(Eq, @debug.Debug, @json.ToJson)
 pub(all) enum Yaml {
   Null
   Bool(Bool)
@@ -62,11 +66,11 @@ pub(all) enum Yaml {
   Alias(String)
   Anchor(name~ : String, value~ : Yaml)
   Tagged(tag~ : String, value~ : Yaml)
-} derive(Eq, ToJson, @debug.Debug)
+}
 pub fn Yaml::equal(Self, Self) -> Bool
 pub fn Yaml::not_equal(Self, Self) -> Bool
 pub fn Yaml::output(Self, &Logger) -> Unit
-pub fn Yaml::to_json(Self) -> Json
+pub fn Yaml::to_json(Self) -> @json.Json
 pub fn Yaml::to_repr(Self) -> @debug.Repr
 pub fn Yaml::to_string(Self) -> String
 pub impl Show for Yaml

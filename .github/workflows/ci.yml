@@ -8,6 +8,10 @@ permissions:
   contents: read
 jobs:
   test:
+    strategy:
+      fail-fast: false
+      matrix:
+        moonbit: [latest, pre-release]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -22,12 +26,12 @@ jobs:
           node-version: 22
       - name: Install MoonBit
         run: |
-          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash
+          curl -fsSL https://cli.moonbitlang.com/install/unix.sh | bash -s -- "${{ matrix.moonbit }}"
           echo "$HOME/.moon/bin" >> "$GITHUB_PATH"
       - name: Check and test all backends
         run: |
           moon version --all
-          moon check --target all
+          moon check --target all --deny-warn
           moon test --target all
           moon fmt --check
       - name: Run pinned YAML conformance corpus
