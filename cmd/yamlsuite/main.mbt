@@ -102,7 +102,7 @@ fn yaml_to_json_value(value : @yaml.Yaml) -> Json raise @yaml.ParseError {
   match value {
     Null => Json::null()
     Bool(b) => Json::boolean(b)
-    Int(i) => Json::number(Double::from_int(i))
+    Int(i) => Json::number(i.to_double())
     Float(f) => float_to_json_value(f)
     String(s) => Json::string(s)
     Binary(bytes) => Json::string(@yaml.encode_base64(bytes))
