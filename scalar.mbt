@@ -556,7 +556,7 @@ fn strip_sign(value : String) -> (Int32, String) {
 
 ///|
 fn parse_int_base(digits : String, base : Int32, sign : Int32) -> Yaml? {
-  try @string.parse_int(digits[:], base~) catch {
+  try @string.parse_int(digits[:], radix=base) catch {
     _ => None
   } noraise {
     value => Some(Yaml::Int(value * sign))

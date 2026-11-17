@@ -182,7 +182,7 @@ fn parse_tagged_int(tag : String, raw : String) -> Yaml raise ParseError {
 fn parse_tagged_float(tag : String, raw : String) -> Yaml raise ParseError {
   match parse_number(raw) {
     Some(Yaml::Float(v)) => Yaml::Float(v)
-    Some(Yaml::Int(v)) => Yaml::Float(Double::from_int(v))
+    Some(Yaml::Int(v)) => Yaml::Float(v.to_double())
     _ => raise ParseError::InvalidTagValue(tag~, value=raw)
   }
 }
