@@ -1,6 +1,6 @@
 name = "bobzhang/yaml"
 
-version = "0.1.2"
+version = "0.1.3"
 
 description = "YAML 1.2 parser in MoonBit"
 
